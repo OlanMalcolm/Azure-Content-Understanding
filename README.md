@@ -39,20 +39,13 @@ Once your content is in the repo, use these three phrases with Copilot to build 
 
 # [Microsoft Build 2026](https://build.microsoft.com)
 
-## 🔥 BRKXXX: SESSION TITLE
+## 🔥 DEM331: Turn APIs, Tools, and Data into Real Agent Velocity
 
 ### Session Description
 
-*Add Session Description*
+Building high-quality agentic applications requires well-structured data — but real-world data is often multi-modal, unorganized, and error-prone. In this demo, see how Azure AI Foundry tools like Azure AI Content Understanding and Azure AI Document Intelligence enable end-to-end multi-modal data ingestion, extraction, and reasoning across complex data types including documents, images, video, and audio. Learn how to provide knowledge, context, and grounding to your agents via Foundry IQ, agent framework and others for higher quality and more reliable output.
 
-### 🏫 Getting started in a guided session
-
-To get started in a guided lab session:
-- <!-- step 1 -->
-- <!-- step 2 -->
-- <!-- step 3 -->
-
-### 🏠 Getting started in your own environment
+### 🚀 Getting started
 
 If you're following these steps at your own pace:
 - Clone this repository
@@ -61,27 +54,29 @@ If you're following these steps at your own pace:
 
 ### 🧠 Learning Outcomes
 
-By the end of this session, you will be able to:
+By the end of this demo, you will be able to:
 
-- <!-- outcome 1 -->
-- <!-- outcome 2 -->
-- <!-- outcome 3 -->
+- Understand why well-structured, high-quality data is critical for building reliable agentic applications
+- Use Azure AI Content Understanding to process multi-modal data (documents, images, video, audio) with classification, extraction, and reasoning capabilities
+- Connect processed data to agents via Foundry IQ and agent framework integration for grounded, context-aware responses
 
 ### 💬 Keep Learning with Copilot
 
-Try these prompts with GitHub Copilot to explore the topics from this session. Open Copilot Chat in VS Code (`Ctrl+Alt+I` on Windows/Linux, `Cmd+Shift+I` on Mac), paste a prompt, and see what you learn. Try connecting the [Microsoft Learn MCP Server](#-microsoft-learn-mcp-server) for the latest official documentation.
+Try these prompts with GitHub Copilot to explore the topics from this demo. Open Copilot Chat in Visual Studio Code (`Ctrl+Alt+I` on Windows/Linux, `Cmd+Shift+I` on Mac), paste a prompt, and see what you learn. Try connecting the [Microsoft Learn MCP Server](#-microsoft-learn-mcp-server) for the latest official documentation.
 
 Use these as a starting point — or write your own!
 
 <!-- Prompts will be tailored to this session's content during repo setup. -->
 
-> *Prompts coming soon — check back after the session content is finalized.*
+> *Prompts coming soon — check back after the demo content is finalized.*
 
 ### 💻 Technologies Used
 
-1. <!-- technology 1 -->
-1. <!-- technology 2 -->
-1. <!-- technology 3 -->
+1. [Microsoft Foundry](https://learn.microsoft.com/azure/foundry/what-is-foundry)
+1. [Azure AI Content Understanding](https://learn.microsoft.com/azure/ai-services/content-understanding/overview)
+1. [Azure AI Document Intelligence](https://learn.microsoft.com/azure/ai-services/document-intelligence/overview)
+1. [Foundry IQ](https://learn.microsoft.com/azure/foundry/agents/concepts/what-is-foundry-iq)
+1. [Azure AI Search](https://learn.microsoft.com/azure/search/search-what-is-azure-search)
 
 ### 📚 Resources and Next Steps
 
@@ -89,10 +84,27 @@ Use these as a starting point — or write your own!
 |:---------|:------------|
 | [https://aka.ms/build26-next-steps](https://aka.ms/build26-next-steps) | Explore lab and session repos to further your learning from Microsoft Build |
 
+### 👤 Content Owners
+
+<!-- Content owners -->
+
+<table>
+<tr>
+    <td align="center"><a href="https://github.com/chulahlou">
+        <img src="https://avatars.githubusercontent.com/u/85763820?v=4" width="100px;" alt="Chu Lahlou"/><br />
+        <sub><b>Chu Lahlou</b></sub></a>
+    </td>
+    <td align="center"><a href="https://github.com/jfilcik">
+        <img src="https://avatars.githubusercontent.com/u/11428131?v=4" width="100px;" alt="Joe Filcik"/><br />
+        <sub><b>Joe Filcik</b></sub></a>
+    </td>
+</tr>
+</table>
+
 
 ### 🌟 Microsoft Learn MCP Server
 
-The Microsoft Learn MCP Server gives your AI agent direct access to Microsoft's official documentation — grounded, up-to-date answers about the products and services covered in this session.
+The Microsoft Learn MCP Server gives your AI agent direct access to Microsoft's official documentation — grounded, up-to-date answers about the products and services covered in this demo.
 
 **VS Code** — One click installation: 
 
