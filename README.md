@@ -43,22 +43,33 @@ Once your content is in the repo, use these three phrases with Copilot to build 
 
 ### Session Description
 
-Building high-quality agentic applications requires well-structured data — but real-world data is often multi-modal, unorganized, and error-prone. In this demo, see how Azure AI Foundry tools like Azure AI Content Understanding and Azure AI Document Intelligence enable end-to-end multi-modal data ingestion, extraction, and reasoning across complex data types including documents, images, video, and audio. Learn how to provide knowledge, context, and grounding to your agents via Foundry IQ, agent framework and others for higher quality and more reliable output.
+Building high-quality agentic applications requires well-structured data — but real-world data is often multi-modal, unorganized, and error-prone. In this demo, a **Fiber Cut Response Agent** triages a critical network incident end-to-end: complex field documents (PDFs with tables, photos, engineering diagrams, splice sheets, and audio transcripts) are processed by **Azure AI Content Understanding** using prebuilt and custom analyzers, then reasoned over by an LLM (Foundry model) to produce a root cause diagnosis, materials plan, and crew dispatch email. The demo also shows how the **Microsoft Agent Framework** wraps Content Understanding into a reusable context provider for multi-turn agent conversations with automatic analysis and caching.
 
 ### 🚀 Getting started
 
 If you're following these steps at your own pace:
-- Clone this repository
-- Set up your development environment
-- <!-- step 3 -->
+
+1. Clone this repository
+2. Install Python dependencies:
+   ```bash
+   pip install azure-ai-contentunderstanding --pre pymupdf python-dotenv openai agent-framework-azure-contentunderstanding agent-framework-foundry --pre
+   ```
+3. Create a `.env` file in the `src/` folder with your Azure AI Content Understanding endpoint and key:
+   ```
+   CONTENTUNDERSTANDING_ENDPOINT=https://<your-resource>.cognitiveservices.azure.com/
+   CONTENTUNDERSTANDING_KEY=<your-key>   # or omit to use DefaultAzureCredential
+   ```
+4. Open `src/demo_fiber_cut_MAF.ipynb` and run cells sequentially
 
 ### 🧠 Learning Outcomes
 
 By the end of this demo, you will be able to:
 
-- Understand why well-structured, high-quality data is critical for building reliable agentic applications
-- Use Azure AI Content Understanding to process multi-modal data (documents, images, video, audio) with classification, extraction, and reasoning capabilities
-- Connect processed data to agents via Foundry IQ and agent framework integration for grounded, context-aware responses
+- Compare local PDF extraction (PyMuPDF) versus Azure AI Content Understanding for structured data recovery — tables, selection marks, figures, and barcodes
+- Use `prebuilt-documentSearch` for general-purpose extraction and define **custom analyzers** with inferred fields that reason about document content, not just extract text
+- Build a document **classifier** that routes unknown documents to the correct custom analyzer in a single API call
+- Use `to_llm_input()` to convert Content Understanding results into token-efficient LLM context with metadata and markdown control
+- Integrate Content Understanding into the **Microsoft Agent Framework** as a context provider for automatic analysis, formatting, and multi-turn caching
 
 ### 💬 Keep Learning with Copilot
 
@@ -66,17 +77,31 @@ Try these prompts with GitHub Copilot to explore the topics from this demo. Open
 
 Use these as a starting point — or write your own!
 
-<!-- Prompts will be tailored to this session's content during repo setup. -->
+1. Understand the basics:
 
-> *Prompts coming soon — check back after the demo content is finalized.*
+```
+Explain how Azure AI Content Understanding custom analyzers differ from prebuilt analyzers. When would I define my own field schema with "method": "generate"?
+```
+
+2. Go deeper:
+
+```
+Using the Microsoft Learn MCP Server, find the latest documentation on Azure AI Content Understanding and walk me through how to create a document classifier that routes to different custom analyzers.
+```
+
+3. Build something:
+
+```
+Help me create a Python script that uses azure-ai-contentunderstanding to analyze a PDF with a custom analyzer, then formats the result with to_llm_input() and sends it to Azure OpenAI for reasoning.
+```
 
 ### 💻 Technologies Used
 
-1. [Microsoft Foundry](https://learn.microsoft.com/azure/foundry/what-is-foundry)
 1. [Azure AI Content Understanding](https://learn.microsoft.com/azure/ai-services/content-understanding/overview)
-1. [Azure AI Document Intelligence](https://learn.microsoft.com/azure/ai-services/document-intelligence/overview)
-1. [Foundry IQ](https://learn.microsoft.com/azure/foundry/agents/concepts/what-is-foundry-iq)
-1. [Azure AI Search](https://learn.microsoft.com/azure/search/search-what-is-azure-search)
+1. [Microsoft Agent Framework](https://learn.microsoft.com/azure/ai-services/agents/overview)
+1. [Azure OpenAI Service](https://learn.microsoft.com/azure/ai-services/openai/overview)
+1. [Azure AI Foundry](https://learn.microsoft.com/azure/foundry/what-is-foundry)
+1. [Python SDK: azure-ai-contentunderstanding](https://pypi.org/project/azure-ai-contentunderstanding/)
 
 ### 📚 Resources and Next Steps
 
