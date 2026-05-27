@@ -1,175 +1,488 @@
-"""Act 4 — Synthesis & Dispatch.
+"""Act 4 — Synthesis: DIAGNOSE → IDENTIFY → DISPATCH.
 
-Shows the agent assembling all 9 extracted documents into a unified context,
-running DIAGNOSE / IDENTIFY / DISPATCH steps, and producing dispatch email.
-Output starts empty — user clicks Run Live or Post-processed.
+Mirrors notebook cells 42 (assemble FULL_CONTEXT via to_llm_input + metadata),
+43 (DIAGNOSE_SYSTEM call), 44 (IDENTIFY_SYSTEM call), 45 (DISPATCH_SYSTEM call).
 """
 
 from pathlib import Path
 
-from dash import html, callback, Input, Output, ctx, no_update
 import dash_mantine_components as dmc
+from dash import Input, Output, callback, ctx, html, no_update
 
-from services.cu_client import is_configured
+from services.cu_client import (
+    AGENT_MODEL,
+    DEFAULT_ANALYZER,
+    agent_reason,
+    get_agent_client,
+    get_cu_client,
+    is_configured,
+)
 
 DOCS_DIR = Path(__file__).parent.parent.parent / "src" / "sample-data" / "documents"
 
-# Code precisely from notebook cells 42-45
-ASSEMBLE_CODE = '''# Assemble ALL 9 documents into unified context
-all_documents = [
-    maintenance_log, audio_transcript, inspection_photos,
-    photo_log, video_inspection, splice_sheet,
-    fiber_routing, equipment_spec, plant_diagram,
-]
-all_results = [
-    maint_result, audio_result, photos_result,
-    photo_log_result, video_result, splice_result,
-    routing_result, equipment_result, plant_result,
-]
-LABELS = [
-    "Maintenance Log (Apr 8)", "Audio Transcript (Apr 15)",
-    "Inspection Photos (May 2)", "Photo Log (Apr 10)",
-    "Video Inspection (Apr 10)", "Splice Sheet (Apr 28)",
-    "Fiber Routing (Apr 28)", "Equipment Spec (May 3)",
-    "Plant Diagram (Apr 28)",
+
+# 9 documents → labels used both in the live runner and the displayed code.
+ALL_DOCS = [
+    ("maintenance_log",   "cl_v3_maintenance_log_2026_Q2.pdf"),
+    ("audio_transcript",  "cl_v3_site_b_audio_transcript_2026_04_15.pdf"),
+    ("inspection_photos", "cl_v3_inspection_photos_2026_05_02.pdf"),
+    ("photo_log",         "cl_v3_site_b_photo_log_2026_04_10.pdf"),
+    ("video_inspection",  "cl_v3_site_b_video_inspection_2026_04_10.pdf"),
+    ("splice_sheet",      "cl_v3_engineering_splice_sheet_2026_04_28.pdf"),
+    ("fiber_routing",     "cl_v3_datacenter_fiber_routing_2026_04_28.pdf"),
+    ("equipment_spec",    "cl_v3_equipment_spec_sheet_2026_05_03.pdf"),
+    ("plant_diagram",     "cl_v3_datacenter_plant_diagram_2026_04_28.pdf"),
 ]
 
-# Assemble the full context
-context = ""
-for label, result in zip(LABELS, all_results):
-    context += f"\\n{'═'*60}\\n📄 {label}\\n{'═'*60}\\n"
-    context += to_llm_input(result) + "\\n"
 
-print(f"✅ 9 documents assembled — {len(context):,} chars of context")
+# ---------------------------------------------------------------------------
+# System prompts — verbatim from notebook cells 43, 44, 45
+# ---------------------------------------------------------------------------
+
+DIAGNOSE_SYSTEM = """You are the Fiber Cut Response Agent for Zava Telecom. Your role: synthesize document evidence into a root cause diagnosis.
+
+You have been given structured extraction results from 9 field documents processed by Azure Content Understanding. Each document was analyzed with either the generic prebuilt-documentSearch analyzer or a purpose-built custom analyzer.
+
+Produce a DIAGNOSIS report with:
+- Location and severity
+- Root cause (specific infrastructure element)
+- Affected strands with loss measurements
+- Customers at risk and redundancy status
+- Evidence chain: list each document source that corroborates your conclusion
+- Final verdict (one sentence)
+
+Be precise. Cite specific values from the extracted fields. Use the format:
+DIAGNOSIS: [incident ID]
+Then structured sections."""
+
+IDENTIFY_SYSTEM = """You are the Fiber Cut Response Agent for Zava Telecom. Your role: build a materials and budget plan from the equipment spec extraction and diagnosis.
+
+You have the full document context AND the diagnosis from your previous step.
+
+Produce a MATERIALS PLAN with:
+- Budget cap and approval reference
+- Table of materials: item, part number, quantity, cost, availability status
+- Total cost vs budget verdict
+- Schedule risks (backorders, lead times)
+- Mitigation strategy for any delays
+- Crew assignment recommendation
+
+Be precise. Use actual part numbers and costs from the equipment spec extraction."""
+
+DISPATCH_SYSTEM = """You are the Fiber Cut Response Agent for Zava Telecom. Your role: draft a dispatch email to the repair crew.
+
+You have the diagnosis and materials plan from your previous steps. Now produce a professional dispatch email that a crew supervisor can act on immediately.
+
+The email must include:
+- To/Cc/Subject headers
+- Priority and start date
+- Scope of work (bullet points)
+- Root cause summary with document references (use document IDs like FSE-2026-0041, FRD-2026-04-28 if found in the data)
+- Risk callout (customer impact, redundancy status)
+- Pre-work checklist
+- Budget summary
+
+End with an automated signature line showing this was generated by the agent.
+Format as a ready-to-send email."""
+
+
+# ---------------------------------------------------------------------------
+# Displayed code — verbatim from notebook cells 42, 43, 44, 45
+# ---------------------------------------------------------------------------
+
+ASSEMBLE_CODE = '''# Notebook cell 42 — assemble all 9 extractions into agent context
+all_results = {
+    "maintenance_log":   maintenance_result,
+    "audio_transcript":  audio_result,
+    "inspection_photos": photos_result,
+    "photo_log":         photo_log_result,
+    "video_inspection":  video_result,
+    "splice_sheet":      splice_result,
+    "fiber_routing":     routing_result,
+    "equipment_spec":    equip_result,
+    "plant_diagram":     plant_result,
+}
+
+agent_context_parts = []
+total_chars = 0
+print("Assembling full agent context via to_llm_input():\\n")
+for name, result in all_results.items():
+    text = to_llm_input(
+        result,
+        metadata={"source": name, "incident": "INC-2026-0391"},
+    )
+    agent_context_parts.append(f"=== Document: {name} ===\\n{text}")
+    total_chars += len(text)
+    print(f"  {name:25s} → {len(text):>6,} chars")
+
+FULL_CONTEXT = "\\n\\n".join(agent_context_parts)
+
+print(f"\\n✅ Total context: {total_chars:,} chars (~{total_chars // 4:,} tokens)")
 '''
 
-DIAGNOSE_CODE = '''# STEP 1: DIAGNOSE — What happened?
-diagnosis = agent_client.chat.completions.create(
-    model="gpt-4.1",
+
+DIAGNOSE_CODE = '''# Notebook cell 43 — Step 1: DIAGNOSE
+DIAGNOSE_SYSTEM = """You are the Fiber Cut Response Agent for Zava Telecom.
+Your role: synthesize document evidence into a root cause diagnosis.
+
+Produce a DIAGNOSIS report with:
+- Location and severity
+- Root cause (specific infrastructure element)
+- Affected strands with loss measurements
+- Customers at risk and redundancy status
+- Evidence chain: list each document source that corroborates your conclusion
+- Final verdict (one sentence)
+
+Be precise. Cite specific values from the extracted fields. Use the format:
+DIAGNOSIS: [incident ID]
+Then structured sections."""
+
+diagnose_response = agent_client.chat.completions.create(
+    model=AGENT_MODEL,
     messages=[
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": context + "\\n\\nDIAGNOSE this incident. "
-         "Root cause, affected segments, severity, timeline."},
+        {"role": "system", "content": DIAGNOSE_SYSTEM},
+        {"role": "user", "content":
+            f"Incident: INC-2026-0391\\n\\nDocument evidence:\\n\\n{FULL_CONTEXT}"},
     ],
-    temperature=0.2, max_tokens=800,
+    temperature=0.2,
+    max_tokens=2000,
 )
-print(diagnosis.choices[0].message.content)
+diagnosis_text = diagnose_response.choices[0].message.content
+print(diagnosis_text)
 '''
 
-DISPATCH_CODE = '''# STEP 2: IDENTIFY materials + STEP 3: DISPATCH
-materials = agent_client.chat.completions.create(
-    model="gpt-4.1",
-    messages=[
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": context + "\\n\\nIDENTIFY required materials, "
-         "crew, and estimated cost. Reference the equipment spec."},
-    ],
-    temperature=0.2, max_tokens=600,
-)
 
-dispatch = agent_client.chat.completions.create(
-    model="gpt-4.1",
+IDENTIFY_CODE = '''# Notebook cell 44 — Step 2: IDENTIFY materials, budget, schedule
+IDENTIFY_SYSTEM = """You are the Fiber Cut Response Agent for Zava Telecom.
+Your role: build a materials and budget plan from the equipment spec
+extraction and diagnosis.
+
+Produce a MATERIALS PLAN with:
+- Budget cap and approval reference
+- Table of materials: item, part number, quantity, cost, availability status
+- Total cost vs budget verdict
+- Schedule risks (backorders, lead times)
+- Mitigation strategy for any delays
+- Crew assignment recommendation
+
+Be precise. Use actual part numbers and costs from the equipment spec."""
+
+identify_response = agent_client.chat.completions.create(
+    model=AGENT_MODEL,
     messages=[
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": context + "\\n\\nDISPATCH: Write a crew "
-         "dispatch email with timeline, materials, safety notes. "
-         "Include budget reference."},
+        {"role": "system", "content": IDENTIFY_SYSTEM},
+        {"role": "user", "content":
+            f"Incident: INC-2026-0391\\n\\n"
+            f"Diagnosis:\\n{diagnosis_text}\\n\\n"
+            f"Full document evidence:\\n\\n{FULL_CONTEXT}"},
     ],
-    temperature=0.3, max_tokens=800,
+    temperature=0.2,
+    max_tokens=2000,
 )
-print("═══ MATERIALS ═══")
-print(materials.choices[0].message.content)
-print("\\n═══ DISPATCH EMAIL ═══")
-print(dispatch.choices[0].message.content)
+identify_text = identify_response.choices[0].message.content
+print(identify_text)
 '''
 
-# Post-processed outputs from notebook
-DIAGNOSIS_OUTPUT = """### ROOT CAUSE ANALYSIS — Incident INC-2026-0391
 
-**Primary Finding:** Recurring fiber degradation in shared conduit at Vault TV-3,
-Segment 9 (~847m mark). Progressive structural failure of concrete vault wall
-creating sustained pressure on fiber bundle.
+DISPATCH_CODE = '''# Notebook cell 45 — Step 3: DISPATCH email
+DISPATCH_SYSTEM = """You are the Fiber Cut Response Agent for Zava Telecom.
+Your role: draft a dispatch email to the repair crew.
 
-**Root Cause Chain:**
-1. Concrete crack (NE-SW) propagating due to thermal cycling + ground settling
-2. Water intrusion through crack → mineral deposits on cable sheath
-3. Conduit compression at crack point → micro-bend on strands 4, 5, 7, 11
-4. January emergency splice was palliative — did not address structural cause
-5. Crack grew from 6" (Jan) → 18" (May) — 3× in 4 months
+The email must include:
+- To/Cc/Subject headers
+- Priority and start date
+- Scope of work (bullet points)
+- Root cause summary with document references
+- Risk callout (customer impact, redundancy status)
+- Pre-work checklist
+- Budget summary
 
-**Severity:** CRITICAL — no redundancy path exists. Route 2 shares conduit
-with Route 1 in Sections 3-5. Total loss = 42 enterprise customers dark.
+End with an automated signature line showing this was generated by the agent.
+Format as a ready-to-send email."""
 
-**Timeline:**
-- Apr 8: Maintenance log flags "recurring" + 0.82 dB loss (was 0.15 baseline)
-- Apr 10: Photo log confirms crack propagation; video finds heave in Section 5
-- Apr 15: Audio transcript — techs confirm "worse than January"
-- Apr 28: Splice sheet — strands SM-5 & SM-11 at FAIL/MARGINAL thresholds
-- May 2: Inspection photos — crack now 18", active water flow confirmed
-- May 3: Equipment spec ordered for full segment replacement
+dispatch_response = agent_client.chat.completions.create(
+    model=AGENT_MODEL,
+    messages=[
+        {"role": "system", "content": DISPATCH_SYSTEM},
+        {"role": "user", "content": (
+            f"Incident: INC-2026-0391\\n\\n"
+            f"Diagnosis:\\n{diagnosis_text}\\n\\n"
+            f"Materials Plan:\\n{identify_text}\\n\\n"
+            f"Full document evidence:\\n\\n{FULL_CONTEXT}"
+        )},
+    ],
+    temperature=0.3,
+    max_tokens=2000,
+)
+dispatch_text = dispatch_response.choices[0].message.content
+print(dispatch_text)
+'''
 
-**Estimated time to failure:** 2-3 weeks at current deterioration rate.
+
+# ---------------------------------------------------------------------------
+# Cached outputs — verbatim from notebook cells 43, 44, 45
+# ---------------------------------------------------------------------------
+
+DIAGNOSIS_CACHED = """DIAGNOSIS: INC-2026-0391
+
+---
+
+**Location and Severity**
+
+- **Location:** Tower Ridge Corridor, Site B, Segment 9 (Pole TR-38 to JB-9B), specifically Vault TV-3 and conduit Sections 3-5.
+- **Severity:** CRITICAL. Immediate risk of total service loss for 42 customers due to a progressing conduit crack and structural failure at Vault TV-3, with no redundancy.
+
+---
+
+**Root Cause (Specific Infrastructure Element)**
+
+- **Root Cause:** Mechanical failure of the shared underground conduit (CDT-TR-003, CDT-TR-004, CDT-TR-005) at Vault TV-3, caused by a worsening crack and displacement of the protective sleeve, resulting in micro-bends and elevated fiber loss.
+- **Infrastructure Element:** Shared conduit installed in 2019 (pre-ZNS-2021-RED-004 redundancy standard), never retrofitted.
+
+---
+
+**Affected Strands with Loss Measurements**
+
+- **Cable Type:** 12-SM OS2 Tight Buffer
+- **Affected Strands:**
+  - SM-5 (Slate): 0.52 dB/km (MARGINAL)
+  - SM-7 (Red): 0.48 dB/km (MARGINAL)
+  - SM-11 (Rose): 0.55 dB/km (FAIL)
+- **Loss Trend:** Progressive degradation (SM-11: 0.42 dB/km Jan → 0.47 Feb → 0.55 Apr)
+- **Failure Mode:** Conduit-induced micro-bend, not splice-related (confirmed by OTDR and field inspection).
+
+---
+
+**Customers at Risk and Redundancy Status**
+
+- **Customers at Risk:** 42 total (34 on Route 1, 8 on Route 2)
+- **Redundancy Status:** NO redundancy. Both Route 1 and Route 2 share the failed conduit in Sections 3-5; if conduit fails, all 42 customers lose service.
+- **Distribution Ports:** D31-D42 on ODF-B serve these customers; single point of failure.
+- **Critical Zone:** Data center racks C05-C08 (plant diagram), ODF-A/B fed via affected conduit.
+
+---
+
+**Evidence Chain**
+
+1. **maintenance_log:** Documents recurring repairs, emergency splices, and confirms 42 customers at risk, no redundancy, and root cause at Vault TV-3.
+2. **audio_transcript:** Field confirmation of conduit crack, sleeve displacement, micro-bend, OTDR anomaly at 847m, and recommendation for full conduit replacement.
+3. **inspection_photos:** Photographic evidence of conduit crack, sleeve displacement, pavement heave, and barrier shift; highlights 42 customers at risk.
+4. **photo_log:** GPS-tagged critical findings (Vault TV-3, surface crack, pavement heave), crack progression, and risk summary.
+5. **video_inspection:** Visual confirmation of crack progression (<1cm Jan → 2cm Apr), sleeve displacement, patch separation, and escalation requirement.
+6. **splice_sheet:** Engineering analysis of strand losses, confirms conduit as root cause, recommends bypass and replacement.
+7. **fiber_routing:** Routing diagram and redundancy gap analysis; confirms single point of failure and affected customer count.
+8. **equipment_spec:** Materials order and engineering justification; confirms conduit replacement required, strand loss values, and customer exposure.
+9. **plant_diagram:** Data center impact; ODF-A/B fed via affected conduit, critical racks at risk.
+
+---
+
+**Final Verdict**
+
+The root cause of incident INC-2026-0391 is a progressing structural failure of the shared underground conduit at Vault TV-3 (Sections 3-5), resulting in micro-bends and elevated fiber loss on strands SM-5, SM-7, and SM-11, critically exposing 42 customers to total service loss with no redundancy; immediate conduit replacement is required to restore network integrity.
 """
 
-MATERIALS_OUTPUT = """### MATERIALS & CREW REQUIREMENTS
 
-**Crew Dispatch:**
-- 2× certified splicers (OS2 rated) — 4 hours each
-- 1× civil crew (vault repair) — 6 hours
-- 1× project engineer (on-site supervision)
+MATERIALS_CACHED = """## MATERIALS PLAN — Incident INC-2026-0391 (Tower Ridge Corridor, Site B, Segment 9)
 
-**Critical Materials (from Equipment Spec):**
-| Item                         | Qty  | Status       | Cost    |
-|------------------------------|------|--------------|---------|
-| G.652D 12-strand SM OS2     | 50m  | In Stock     | $1,450  |
-| Vault repair kit (concrete) | 1    | In Stock     | $890    |
-| Splice protection sleeves   | 24   | In Stock     | $144    |
-| OTDR calibration reference  | 1    | In Stock     | $0      |
-| Conduit sealant (hydro)     | 2L   | In Stock     | $215    |
-| Vault Anchors (VA-HEL-6FT)  | 6    | ⚠️ BACKORDER | $780    |
+---
 
-**Total:** $6,829 of $120,000 budget (5.7%)
-**Critical Path:** Vault anchors on backorder — ETA May 15.
-Schedule repair for May 16-17 window.
+### Budget Cap & Approval Reference
+
+- **Budget Cap:** $120,000 (corridor rehab, BUD-2026-TR-009)
+- **Approval:** VP Daniels, 2026-05-01 (see maintenance_log addendum, plant_diagram, equipment_spec)
+- **Materials Order Reference:** PO-2026-0391 (Webb, 05/03)
+- **Engineering Justification:** FSE-2026-0041, FRD-2026-04-28
+
+---
+
+### Materials Table
+
+| Item                | Part Number        | Quantity | Unit Cost | Total Cost | Availability Status         | Lead Time      |
+|---------------------|-------------------|----------|-----------|-----------|----------------------------|----------------|
+| 12-SM OS2 Cable     | CBL-12SM-OS2      | 200 m    | $4.80     | $960      | In stock                   | 3 days         |
+| Conduit Sch80 110mm | CDT-PVC-80-110    | 65 m     | $28.50    | $1,853    | In stock                   | 5 days         |
+| Splice Enclosure    | SE-24F-UG         | 3 ea     | $185.00   | $555      | In stock                   | 2 days         |
+| Splice Protectors   | SP-60MM-100PK     | 2 pk     | $45.00    | $90       | In stock                   | Immediate      |
+| Cable Ties UV       | CT-UV-200MM       | 5 pk     | $12.00    | $60       | In stock                   | Immediate      |
+| JB Cover SS         | JB-CVR-SS-7A      | 2 ea     | $320.00   | $640      | Limited stock              | 7 days         |
+| Vault Anchors       | VA-HEL-6FT        | 24 ea    | $89.00    | $2,136    | **Backorder**              | **10 days**    |
+| **Subtotal**        |                   |          |           | $6,294    |                            |                |
+| **Tax (8.5%)**      |                   |          |           | $535      |                            |                |
+| **TOTAL**           |                   |          |           | $6,829    |                            |                |
+
+---
+
+### Total Cost vs Budget Verdict
+
+- **Total Materials Cost:** $6,829 (including tax)
+- **Budget Cap:** $120,000
+- **Verdict:** **WITHIN BUDGET** (materials cost is 5.7% of cap; full corridor rehab estimate ~$64K including labor, still well below cap)
+
+---
+
+### Schedule Risks
+
+- **Vault Anchors (VA-HEL-6FT):** Backordered, ETA pushed to 05/15 (critical for vault stabilization, see equipment_spec)
+- **JB Cover SS (JB-CVR-SS-7A):** Limited stock, 7-day lead time (not critical path)
+- **Critical Path:** Vault anchors, conduit, cable (anchors are the only item with significant risk)
+
+---
+
+### Mitigation Strategy for Delays
+
+- **Vault Anchors:** Use temporary shims for vault stabilization until anchors arrive (see equipment_spec note). This allows conduit/cable replacement to proceed without delay to customer restoration.
+- **JB Covers:** Proceed with existing covers if possible; replace when new covers arrive.
+- **Aerial Bypass:** Implement aerial bypass for Route 2 (per FSE-2026-0041, FRD-2026-04-28) during conduit replacement to maintain service for 8 customers. Materials for bypass are covered under separate $12K allocation (not included in this table, but within overall budget).
+- **Crew Coordination:** Schedule vault anchor installation as a follow-up task post-cable/conduit replacement.
+
+---
+
+### Crew Assignment Recommendation
+
+- **Primary Crew:** Team A (Fiber Crew) — experienced with corridor fiber/conduit replacement, already assigned in maintenance_log.
+- **Support Crew:** GeoCorp (External) — vault measurement and anchor installation (see maintenance_log).
+- **Engineering Oversight:** Nakamura (Engineer) — field verification and routing (see splice_sheet, fiber_routing).
+- **Field Tech:** Sharma — on-site supervision, splice verification.
+- **Sequence:**
+    1. Team A: Remove failed conduit, install new conduit and cable, perform splicing.
+    2. GeoCorp: Install vault anchors (when available), verify vault stability.
+    3. Team A: Finalize JB covers, cable ties, and protectors.
+    4. Engineering: Post-install OTDR and loss verification.
+
+---
+
+### Summary
+
+- **Immediate action:** Replace conduit and cable, use temp shims for vault stabilization, implement aerial bypass for Route 2.
+- **Materials:** All items ordered, only vault anchors on backorder (mitigated by temp shims).
+- **Budget:** Well within cap; no risk of overrun.
+- **Schedule:** 10-day critical path (vault anchors), but customer restoration can proceed in advance.
+- **Crew:** Team A + GeoCorp, with engineering oversight.
+
+---
+
+**Approval:**
+K. Nakamura, PE (Engineering)
+M. Webb, Operations Manager
+VP Daniels (Budget)
+
+**Reference:**
+BUD-2026-TR-009, PO-2026-0391, FSE-2026-0041, FRD-2026-04-28
+
+---
+
+**Ready for execution.**
 """
 
-DISPATCH_OUTPUT = """### DISPATCH EMAIL — Crew Orders
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-TO: Fiber Repair Crew Bravo (TC-Bravo)
-CC: K. Okonkwo (Inspector), J. Martinez (Lead Tech)
-SUBJECT: [URGENT] Segment 9 Full Replacement — Vault TV-3
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DISPATCH_CACHED = """**To:** Team A (Fiber Crew Supervisor), GeoCorp Crew Lead
+**Cc:** K. Nakamura (Engineering), P. Sharma (Field Tech), M. Webb (Ops Manager), VP Daniels (Budget), NOC Operations
+**Subject:** [PRIORITY: CRITICAL] Dispatch — Conduit Replacement & Fiber Restoration, Tower Ridge Corridor Site B, Segment 9 (INC-2026-0391)
 
-DISPATCH ORDER: DO-2026-0391-A
-PRIORITY: IMMEDIATE (no redundancy)
-WINDOW: May 16-17, 2026 (06:00 - 18:00 both days)
+---
 
-SCOPE OF WORK:
-1. Full segment replacement — Section 9, Vault TV-3 to TV-4 (50m)
-2. Vault structural repair (concrete + sealant)
-3. Re-splice all 12 strands with 0.10 dB target per splice
-4. OTDR verification: full span + per-splice validation
-5. Conduit separation: isolate Route 1 from Route 2
+**Priority:** CRITICAL
+**Start Date:** Immediate — Target Crew Mobilization: 2026-05-08 (materials ETA aligns; vault anchors temp shim strategy in place)
 
-SAFETY NOTES:
-⚠️ Active water intrusion — dewatering required before entry
-⚠️ Shared vault — confirm Route 2 customer notification (42 affected)
-⚠️ Confined space — 2-person minimum with gas monitoring
+---
 
-BUDGET: Pre-approved $6,829 (PO #PO-2026-0391)
-NOTE: Vault anchors ETA May 15. Confirm delivery before mobilization.
+**Scope of Work — Tower Ridge Corridor Site B, Segment 9 (Pole TR-38 to JB-9B, Vault TV-3, Sections 3-5):**
 
-— Zava Telecom Fiber Response Agent (automated)
-   Incident INC-2026-0391
+- Remove failed underground conduit (CDT-TR-003/004/005) at Vault TV-3 and Sections 3-5.
+- Install new Schedule 80 PVC conduit (65m, CDT-PVC-80-110) per engineering spec.
+- Replace 12-SM OS2 tight buffer cable (200m, CBL-12SM-OS2); perform full splicing and loss verification.
+- Deploy new splice enclosures (SE-24F-UG x3), splice protectors, cable ties, and JB covers.
+- Stabilize Vault TV-3 using temporary shims until vault anchors (VA-HEL-6FT) arrive (ETA 05/15).
+- Implement aerial bypass for Route 2 (8 customers) during conduit replacement (per FSE-2026-0041, FRD-2026-04-28).
+- Coordinate with GeoCorp for vault anchor installation post-cable/conduit replacement.
+- Engineering oversight: Nakamura — field verification, post-install OTDR, and loss testing.
+- Document all work, including before/after photos and OTDR traces.
+
+---
+
+**Root Cause Summary (with Document References):**
+
+- **Root Cause:** Mechanical failure of shared underground conduit at Vault TV-3 (progressive crack/displacement, micro-bends, elevated fiber loss).
+- **Evidence Chain:**
+  - **FSE-2026-0041:** Splice engineering sheet — confirms conduit as root cause, recommends bypass/replacement.
+  - **FRD-2026-04-28:** Fiber routing analysis — confirms single point of failure, 42 customers at risk, no redundancy.
+  - **maintenance_log:** Recurring repairs, emergency splices, corridor rehab approval, crew assignment.
+  - **audio_transcript:** Field confirmation of crack, sleeve displacement, OTDR anomaly, full replacement recommendation.
+  - **inspection_photos/photo_log/video_inspection:** Visual/GPS evidence of crack progression, sleeve displacement, pavement heave, barrier shift, escalation requirement.
+  - **equipment_spec:** Materials order, engineering justification, vault anchor backorder risk.
+  - **plant_diagram:** Data center impact — ODF-A/B fed via affected conduit, racks C05-C08 at risk.
+
+---
+
+**Risk Callout:**
+
+- **Customer Impact:** 42 customers (34 Route 1, 8 Route 2) at immediate risk of total service loss.
+- **Redundancy Status:** NO redundancy; both routes share failed conduit. If conduit fails, all 42 customers lose service.
+- **Critical Zone:** Data center racks C05-C08; ODF-A/B will go down if conduit fails.
+- **Schedule Risk:** Vault anchors on backorder (ETA 05/15); temp shims allow restoration ahead of anchor arrival.
+- **Mitigation:** Aerial bypass for Route 2 during conduit work; temp stabilization for vault.
+
+---
+
+**Pre-Work Checklist:**
+
+- [ ] Confirm receipt of all materials except vault anchors (temp shims ready).
+- [ ] Review engineering drawings and routing diagrams (FSE-2026-0041, FRD-2026-04-28).
+- [ ] Verify crew assignments and schedule (Team A, GeoCorp, Engineering oversight).
+- [ ] Prepare OTDR and splicing equipment; verify calibration.
+- [ ] Ensure field documentation kit (photo/video/GPS logging).
+- [ ] Confirm safety gear and site access permits.
+- [ ] Notify NOC and affected customers of planned outage window.
+- [ ] Review aerial bypass plan and materials for Route 2.
+
+---
+
+**Budget Summary:**
+
+- **Materials Cost:** $6,829 (including tax; PO-2026-0391)
+- **Full Corridor Rehab Estimate (materials + labor):** ~$64,000
+- **Budget Cap:** $120,000 (BUD-2026-TR-009, approved VP Daniels)
+- **Verdict:** WITHIN BUDGET (materials cost is 5.7% of cap; full project well below cap)
+- **Aerial Bypass Allocation:** $12,000 (separate, included in overall corridor budget)
+- **Labor Tracking:** See maintenance_log for crew hours and rates.
+
+---
+
+**Action Required:**
+Mobilize Team A and GeoCorp crews for immediate conduit/cable replacement and stabilization at Vault TV-3. Engineering and field tech oversight required throughout. Document all findings and restoration steps. Notify NOC of progress and completion.
+
+---
+
+**References:**
+- FSE-2026-0041, FRD-2026-04-28, maintenance_log, audio_transcript, inspection_photos, photo_log, video_inspection, equipment_spec, plant_diagram, PO-2026-0391, BUD-2026-TR-009
+
+---
+
+**Automated Dispatch — Generated by Zava Telecom Fiber Cut Response Agent**
+INC-2026-0391 | Dispatch ID: D-2026-TR-0391 | Timestamp: 2026-05-07 09:15 UTC
 """
+
+
+# ---------------------------------------------------------------------------
+# Layout
+# ---------------------------------------------------------------------------
+
+PRE_STYLE = {
+    "fontFamily": "var(--mono)",
+    "fontSize": "0.70rem",
+    "lineHeight": "1.5",
+    "whiteSpace": "pre-wrap",
+}
 
 
 def _empty_output():
     return [
         html.Div("Output", className="demo-panel-header"),
         dmc.Center(
-            dmc.Text("Press  ▶ Run Live  or  📦 Post-processed  to execute", c="dimmed", size="sm"),
+            dmc.Text(
+                "Press  \u25B6 Run Live  or  \U0001F4E6 Pre-processed  to execute",
+                c="dimmed", size="sm",
+            ),
             style={"height": "100%", "flex": "1"},
         ),
     ]
@@ -186,44 +499,39 @@ def _output_tabs(diagnosis_text, materials_text, dispatch_text):
                     dmc.TabsTab("Materials", value="materials"),
                     dmc.TabsTab("Dispatch", value="dispatch"),
                 ]),
-                dmc.TabsPanel(
-                    html.Pre(diagnosis_text, style={"fontFamily": "var(--mono)", "fontSize": "0.7rem",
-                                                    "lineHeight": "1.5", "whiteSpace": "pre-wrap"}),
-                    value="diagnosis", pt="md",
-                ),
-                dmc.TabsPanel(
-                    html.Pre(materials_text, style={"fontFamily": "var(--mono)", "fontSize": "0.7rem",
-                                                    "lineHeight": "1.5", "whiteSpace": "pre-wrap"}),
-                    value="materials", pt="md",
-                ),
-                dmc.TabsPanel(
-                    html.Pre(dispatch_text, style={"fontFamily": "var(--mono)", "fontSize": "0.7rem",
-                                                    "lineHeight": "1.5", "whiteSpace": "pre-wrap"}),
-                    value="dispatch", pt="md",
-                ),
+                dmc.TabsPanel(html.Pre(diagnosis_text, style=PRE_STYLE),
+                              value="diagnosis", pt="md"),
+                dmc.TabsPanel(html.Pre(materials_text, style=PRE_STYLE),
+                              value="materials", pt="md"),
+                dmc.TabsPanel(html.Pre(dispatch_text, style=PRE_STYLE),
+                              value="dispatch", pt="md"),
             ],
         ),
     ]
 
 
 def act4_layout():
-    """Build the Act 4 live demo page layout."""
     live_available = is_configured()
 
     return html.Div([
         html.Div(
-            style={"display": "flex", "justifyContent": "space-between", "alignItems": "center",
-                   "padding": "16px 24px 0 24px"},
+            style={
+                "display": "flex", "justifyContent": "space-between", "alignItems": "center",
+                "padding": "16px 24px 0 24px",
+            },
             children=[
                 dmc.Group([
                     dmc.Badge("Act 4", color="orange", variant="filled", size="lg"),
-                    dmc.Title("The Agent Thinks — Synthesis & Dispatch", order=4, c="white"),
+                    dmc.Title("The Agent Thinks — Synthesis & Dispatch",
+                              order=4, c="white"),
                 ]),
                 dmc.Group([
-                    dmc.Badge("READY", color="gray", variant="light", size="sm", id="act4-mode-badge"),
-                    dmc.Button("▶ Run Live", id="act4-run-btn", variant="light", size="xs",
-                               color="green", disabled=not live_available),
-                    dmc.Button("📦 Post-processed", id="act4-cached-btn", variant="light", size="xs", color="blue"),
+                    dmc.Badge("READY", color="gray", variant="light", size="sm",
+                              id="act4-mode-badge"),
+                    dmc.Button("\u25B6 Run Live", id="act4-run-btn", variant="light",
+                               size="xs", color="green", disabled=not live_available),
+                    dmc.Button("\U0001F4E6 Pre-processed", id="act4-cached-btn",
+                               variant="light", size="xs", color="blue"),
                 ]),
             ],
         ),
@@ -232,31 +540,138 @@ def act4_layout():
             className="demo-page",
             style={"height": "calc(100vh - 60px)", "paddingTop": "12px"},
             children=[
-                # Left: Document overview
+                # Left: 9 docs → FULL_CONTEXT → 3 sequential calls
                 html.Div(className="demo-panel", children=[
-                    html.Div("📚 9 Documents Assembled", className="demo-panel-header"),
+                    html.Div("\U0001F4DA 9 Documents \u2192 FULL_CONTEXT \u2192 3 Calls",
+                             className="demo-panel-header"),
                     dmc.Stack([
-                        dmc.Paper(p="xs", radius="sm", withBorder=True, children=[
-                            dmc.Text("All 9 extracted documents feed into the synthesis agent:", size="xs", c="dimmed"),
-                        ]),
-                        dmc.List([
-                            dmc.ListItem(dmc.Text("Maintenance Log (Apr 8)", size="xs")),
-                            dmc.ListItem(dmc.Text("Audio Transcript (Apr 15)", size="xs")),
-                            dmc.ListItem(dmc.Text("Inspection Photos (May 2)", size="xs")),
-                            dmc.ListItem(dmc.Text("Photo Log (Apr 10)", size="xs")),
-                            dmc.ListItem(dmc.Text("Video Inspection (Apr 10)", size="xs")),
-                            dmc.ListItem(dmc.Text("Splice Sheet (Apr 28)", size="xs")),
-                            dmc.ListItem(dmc.Text("Fiber Routing (Apr 28)", size="xs")),
-                            dmc.ListItem(dmc.Text("Equipment Spec (May 3)", size="xs")),
-                            dmc.ListItem(dmc.Text("Plant Diagram (Apr 28)", size="xs")),
-                        ], size="sm"),
-                        dmc.Divider(),
-                        dmc.Text("Agent performs 3 reasoning steps:", size="xs", fw=600),
-                        dmc.List([
-                            dmc.ListItem(dmc.Text("DIAGNOSE — root cause analysis", size="xs")),
-                            dmc.ListItem(dmc.Text("IDENTIFY — materials & crew", size="xs")),
-                            dmc.ListItem(dmc.Text("DISPATCH — crew deployment email", size="xs")),
-                        ], size="sm", type="ordered"),
+                        # Input: 9 documents
+                        dmc.Paper(
+                            p="sm", radius="md", withBorder=True,
+                            style={
+                                "background": "rgba(251,146,60,0.05)",
+                                "borderColor": "rgba(251,146,60,0.35)",
+                            },
+                            children=[
+                                dmc.Group([
+                                    dmc.Badge("9 PDFs", color="orange",
+                                              variant="filled", size="sm"),
+                                    dmc.Text("CU extractions",
+                                             size="xs", c="orange.3", fw=600),
+                                ], justify="space-between", mb=8),
+                                dmc.SimpleGrid(
+                                    cols=2, spacing=2, verticalSpacing=2,
+                                    children=[
+                                        dmc.Text(name, size="xs",
+                                                 ff="var(--mono)", c="dimmed")
+                                        for name, _ in ALL_DOCS
+                                    ],
+                                ),
+                            ],
+                        ),
+
+                        # Arrow connector
+                        dmc.Center(
+                            dmc.Stack([
+                                dmc.Text("\u2193", size="xl", c="orange",
+                                         fw=700, ta="center",
+                                         style={"lineHeight": "1"}),
+                                dmc.Text("to_llm_input(result, metadata=\u2026)",
+                                         size="xs", c="dimmed", ta="center",
+                                         ff="var(--mono)"),
+                            ], gap=2),
+                        ),
+
+                        # FULL_CONTEXT bundle
+                        dmc.Paper(
+                            p="sm", radius="md", withBorder=True,
+                            style={
+                                "background": "rgba(255,255,255,0.03)",
+                                "borderColor": "rgba(255,255,255,0.15)",
+                            },
+                            children=[
+                                dmc.Group([
+                                    dmc.Text("FULL_CONTEXT", size="sm", fw=700,
+                                             ff="var(--mono)", c="white"),
+                                    dmc.Badge("1 prompt", color="gray",
+                                              variant="light", size="xs"),
+                                ], justify="space-between"),
+                                dmc.Text(
+                                    "All 9 extractions joined into a single "
+                                    "context block, token-counted.",
+                                    size="xs", c="dimmed", mt=4,
+                                ),
+                            ],
+                        ),
+
+                        # Arrow connector
+                        dmc.Center(
+                            dmc.Stack([
+                                dmc.Text("\u2193", size="xl", c="orange",
+                                         fw=700, ta="center",
+                                         style={"lineHeight": "1"}),
+                                dmc.Text("3 sequential agent calls",
+                                         size="xs", c="dimmed", ta="center"),
+                            ], gap=2),
+                        ),
+
+                        # Three step cards
+                        dmc.Stack([
+                            dmc.Paper(
+                                p="xs", radius="md", withBorder=True,
+                                children=dmc.Group([
+                                    dmc.Badge("1", color="orange",
+                                              variant="filled", size="sm",
+                                              circle=True),
+                                    dmc.Stack([
+                                        dmc.Text("DIAGNOSE", size="xs", fw=700,
+                                                 ff="var(--mono)"),
+                                        dmc.Text("root cause + evidence chain",
+                                                 size="xs", c="dimmed"),
+                                    ], gap=0),
+                                ], gap="sm", wrap="nowrap"),
+                            ),
+                            dmc.Paper(
+                                p="xs", radius="md", withBorder=True,
+                                children=dmc.Group([
+                                    dmc.Badge("2", color="orange",
+                                              variant="filled", size="sm",
+                                              circle=True),
+                                    dmc.Stack([
+                                        dmc.Text("IDENTIFY", size="xs", fw=700,
+                                                 ff="var(--mono)"),
+                                        dmc.Text("materials, budget, crew",
+                                                 size="xs", c="dimmed"),
+                                    ], gap=0),
+                                ], gap="sm", wrap="nowrap"),
+                            ),
+                            dmc.Paper(
+                                p="xs", radius="md", withBorder=True,
+                                children=dmc.Group([
+                                    dmc.Badge("3", color="orange",
+                                              variant="filled", size="sm",
+                                              circle=True),
+                                    dmc.Stack([
+                                        dmc.Text("DISPATCH", size="xs", fw=700,
+                                                 ff="var(--mono)"),
+                                        dmc.Text("ready-to-send crew email",
+                                                 size="xs", c="dimmed"),
+                                    ], gap=0),
+                                ], gap="sm", wrap="nowrap"),
+                            ),
+                        ], gap=6),
+
+                        # Insight callout
+                        dmc.Alert(
+                            color="orange", variant="light", radius="md",
+                            icon="\U0001F4A1",
+                            children=dmc.Text(
+                                "The agent reasoned from CU extractions \u2014 "
+                                "no pre-written templates.",
+                                size="xs",
+                            ),
+                            p="xs",
+                        ),
                     ], gap="sm"),
                 ]),
 
@@ -269,21 +684,31 @@ def act4_layout():
                             dmc.TabsList([
                                 dmc.TabsTab("Assemble", value="assemble"),
                                 dmc.TabsTab("Diagnose", value="diagnose"),
+                                dmc.TabsTab("Identify", value="identify"),
                                 dmc.TabsTab("Dispatch", value="dispatch"),
                             ]),
                             dmc.TabsPanel(
-                                dmc.CodeHighlight(code=ASSEMBLE_CODE, language="python", withCopyButton=False,
-                                                  style={"fontSize": "0.72rem"}),
+                                dmc.CodeHighlight(code=ASSEMBLE_CODE, language="python",
+                                                  withCopyButton=False,
+                                                  style={"fontSize": "0.70rem"}),
                                 value="assemble", pt="md",
                             ),
                             dmc.TabsPanel(
-                                dmc.CodeHighlight(code=DIAGNOSE_CODE, language="python", withCopyButton=False,
-                                                  style={"fontSize": "0.72rem"}),
+                                dmc.CodeHighlight(code=DIAGNOSE_CODE, language="python",
+                                                  withCopyButton=False,
+                                                  style={"fontSize": "0.70rem"}),
                                 value="diagnose", pt="md",
                             ),
                             dmc.TabsPanel(
-                                dmc.CodeHighlight(code=DISPATCH_CODE, language="python", withCopyButton=False,
-                                                  style={"fontSize": "0.72rem"}),
+                                dmc.CodeHighlight(code=IDENTIFY_CODE, language="python",
+                                                  withCopyButton=False,
+                                                  style={"fontSize": "0.70rem"}),
+                                value="identify", pt="md",
+                            ),
+                            dmc.TabsPanel(
+                                dmc.CodeHighlight(code=DISPATCH_CODE, language="python",
+                                                  withCopyButton=False,
+                                                  style={"fontSize": "0.70rem"}),
                                 value="dispatch", pt="md",
                             ),
                         ],
@@ -291,12 +716,106 @@ def act4_layout():
                 ]),
 
                 # Right: Output (starts empty)
-                html.Div(className="demo-panel", id="act4-output-panel", children=_empty_output()),
+                html.Div(className="demo-panel", id="act4-output-panel",
+                         children=_empty_output()),
             ],
         ),
 
-        html.Div("← → to navigate", className="nav-hint"),
+        html.Div("\u2190 \u2192 to navigate", className="nav-hint"),
     ])
+
+
+# ---------------------------------------------------------------------------
+# Live runner — analyze all 9 PDFs with prebuilt-documentSearch, then run
+# DIAGNOSE → IDENTIFY → DISPATCH (each call feeds the next).
+# ---------------------------------------------------------------------------
+
+def _run_live():
+    from azure.ai.contentunderstanding import to_llm_input
+
+    client = get_cu_client()
+    agent_client = get_agent_client()
+    if client is None or agent_client is None:
+        return ("\u26A0\uFE0F Service not configured", "", "")
+
+    parts = []
+    for name, filename in ALL_DOCS:
+        path = DOCS_DIR / filename
+        if not path.exists():
+            parts.append(f"=== Document: {name} ===\n(file not found: {filename})")
+            continue
+        try:
+            with open(path, "rb") as f:
+                poller = client.begin_analyze_binary(
+                    analyzer_id=DEFAULT_ANALYZER,
+                    binary_input=f.read(),
+                )
+            result = poller.result()
+            text = to_llm_input(
+                result,
+                metadata={"source": name, "incident": "INC-2026-0391"},
+            )
+            parts.append(f"=== Document: {name} ===\n{text}")
+        except Exception as e:
+            parts.append(f"=== Document: {name} ===\n(error: {type(e).__name__}: {e})")
+
+    FULL_CONTEXT = "\n\n".join(parts)
+
+    # Step 1: DIAGNOSE
+    try:
+        diag = agent_client.chat.completions.create(
+            model=AGENT_MODEL,
+            messages=[
+                {"role": "system", "content": DIAGNOSE_SYSTEM},
+                {"role": "user", "content":
+                    f"Incident: INC-2026-0391\n\nDocument evidence:\n\n{FULL_CONTEXT}"},
+            ],
+            temperature=0.2,
+            max_tokens=2000,
+        )
+        diagnosis_text = diag.choices[0].message.content
+    except Exception as e:
+        diagnosis_text = f"\u26A0\uFE0F DIAGNOSE failed: {type(e).__name__}: {e}"
+
+    # Step 2: IDENTIFY
+    try:
+        ident = agent_client.chat.completions.create(
+            model=AGENT_MODEL,
+            messages=[
+                {"role": "system", "content": IDENTIFY_SYSTEM},
+                {"role": "user", "content":
+                    f"Incident: INC-2026-0391\n\n"
+                    f"Diagnosis:\n{diagnosis_text}\n\n"
+                    f"Full document evidence:\n\n{FULL_CONTEXT}"},
+            ],
+            temperature=0.2,
+            max_tokens=2000,
+        )
+        identify_text = ident.choices[0].message.content
+    except Exception as e:
+        identify_text = f"\u26A0\uFE0F IDENTIFY failed: {type(e).__name__}: {e}"
+
+    # Step 3: DISPATCH
+    try:
+        disp = agent_client.chat.completions.create(
+            model=AGENT_MODEL,
+            messages=[
+                {"role": "system", "content": DISPATCH_SYSTEM},
+                {"role": "user", "content": (
+                    f"Incident: INC-2026-0391\n\n"
+                    f"Diagnosis:\n{diagnosis_text}\n\n"
+                    f"Materials Plan:\n{identify_text}\n\n"
+                    f"Full document evidence:\n\n{FULL_CONTEXT}"
+                )},
+            ],
+            temperature=0.3,
+            max_tokens=2000,
+        )
+        dispatch_text = disp.choices[0].message.content
+    except Exception as e:
+        dispatch_text = f"\u26A0\uFE0F DISPATCH failed: {type(e).__name__}: {e}"
+
+    return diagnosis_text, identify_text, dispatch_text
 
 
 @callback(
@@ -308,122 +827,18 @@ def act4_layout():
     prevent_initial_call=True,
 )
 def run_act4(run_clicks, cached_clicks):
-    """Execute live or show post-processed results."""
     triggered = ctx.triggered_id
 
     if triggered == "act4-cached-btn":
-        return _output_tabs(DIAGNOSIS_OUTPUT, MATERIALS_OUTPUT, DISPATCH_OUTPUT), "POST-PROCESSED", "blue"
+        return (_output_tabs(DIAGNOSIS_CACHED, MATERIALS_CACHED, DISPATCH_CACHED),
+                "PRE-PROCESSED", "blue")
 
     if triggered == "act4-run-btn":
-        import os
-        from dotenv import load_dotenv
-        from azure.ai.contentunderstanding import ContentUnderstandingClient, to_llm_input
-        from azure.core.credentials import AzureKeyCredential
-        from openai import AzureOpenAI
-
-        load_dotenv(override=True)
-        endpoint = os.environ.get("CONTENTUNDERSTANDING_ENDPOINT", "")
-        key = os.getenv("CONTENTUNDERSTANDING_KEY")
-
-        if not endpoint:
-            return _output_tabs("⚠️ CONTENTUNDERSTANDING_ENDPOINT not set", "", ""), "ERROR", "red"
-
-        credential = AzureKeyCredential(key) if key else None
-        client = ContentUnderstandingClient(endpoint=endpoint, credential=credential,
-                                            user_agent="build26-DEM331-demo/1.0.0")
-        agent_client = AzureOpenAI(azure_endpoint=endpoint, api_key=key, api_version="2025-04-01-preview")
-
-        SYSTEM_PROMPT = (
-            "You are the Fiber Cut Response Agent for Zava Telecom. "
-            "You are processing incident INC-2026-0391 — a critical shared-conduit fiber degradation. "
-            "You have 9 extracted documents as context. Provide structured, actionable analysis."
-        )
-
-        # Analyze all 9 documents
-        ALL_DOCS = [
-            "cl_v3_maintenance_log_2026_04_08.pdf",
-            "cl_v3_site_b_audio_transcript_2026_04_15.pdf",
-            "cl_v3_inspection_photos_2026_05_02.pdf",
-            "cl_v3_site_b_photo_log_2026_04_10.pdf",
-            "cl_v3_site_b_video_inspection_2026_04_10.pdf",
-            "cl_v3_engineering_splice_sheet_2026_04_28.pdf",
-            "cl_v3_datacenter_fiber_routing_2026_04_28.pdf",
-            "cl_v3_equipment_spec_sheet_2026_05_03.pdf",
-            "cl_v3_datacenter_plant_diagram_2026_04_28.pdf",
-        ]
-        LABELS = [
-            "Maintenance Log (Apr 8)", "Audio Transcript (Apr 15)",
-            "Inspection Photos (May 2)", "Photo Log (Apr 10)",
-            "Video Inspection (Apr 10)", "Splice Sheet (Apr 28)",
-            "Fiber Routing (Apr 28)", "Equipment Spec (May 3)",
-            "Plant Diagram (Apr 28)",
-        ]
-
-        # Build full context from CU extraction of all docs
-        context = ""
         try:
-            for label, filename in zip(LABELS, ALL_DOCS):
-                doc_path = DOCS_DIR / filename
-                if not doc_path.exists():
-                    context += f"\n{'═'*60}\n📄 {label}\n{'═'*60}\n(file not found)\n"
-                    continue
-                with open(doc_path, "rb") as f:
-                    poller = client.begin_analyze_binary(analyzer_id="prebuilt-layout", binary_input=f.read())
-                result = poller.result()
-                context += f"\n{'═'*60}\n📄 {label}\n{'═'*60}\n"
-                if result.contents:
-                    context += to_llm_input(result) + "\n"
-                else:
-                    context += "(empty extraction)\n"
+            d, i, p = _run_live()
+            return _output_tabs(d, i, p), "LIVE", "green"
         except Exception as e:
-            return _output_tabs(f"⚠️ Error extracting documents: {e}", "", ""), "ERROR", "red"
-
-        # DIAGNOSE
-        try:
-            diag = agent_client.chat.completions.create(
-                model="gpt-4.1",
-                messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": context + "\n\nDIAGNOSE this incident. "
-                     "Root cause, affected segments, severity, timeline."},
-                ],
-                temperature=0.2, max_tokens=800,
-            )
-            diagnosis = diag.choices[0].message.content
-        except Exception as e:
-            diagnosis = f"⚠️ Error: {e}"
-
-        # IDENTIFY materials
-        try:
-            mat = agent_client.chat.completions.create(
-                model="gpt-4.1",
-                messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": context + "\n\nIDENTIFY required materials, "
-                     "crew, and estimated cost. Reference the equipment spec."},
-                ],
-                temperature=0.2, max_tokens=600,
-            )
-            materials = mat.choices[0].message.content
-        except Exception as e:
-            materials = f"⚠️ Error: {e}"
-
-        # DISPATCH
-        try:
-            disp = agent_client.chat.completions.create(
-                model="gpt-4.1",
-                messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": context + "\n\nDISPATCH: Write a crew "
-                     "dispatch email with timeline, materials, safety notes. "
-                     "Include budget reference."},
-                ],
-                temperature=0.3, max_tokens=800,
-            )
-            dispatch = disp.choices[0].message.content
-        except Exception as e:
-            dispatch = f"⚠️ Error: {e}"
-
-        return _output_tabs(diagnosis, materials, dispatch), "LIVE", "green"
+            return (_output_tabs(f"\u26A0\uFE0F {type(e).__name__}: {e}", "", ""),
+                    "ERROR", "red")
 
     return no_update, no_update, no_update

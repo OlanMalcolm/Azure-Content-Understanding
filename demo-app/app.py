@@ -48,15 +48,15 @@ for i in range(11, 14):
 # Act 4 live code page (after slide 14)
 SEQUENCE.append(("page", "act4"))
 
-# Slides 15–17 (deck indices 14–16)
-for i in range(14, 17):
+# Slides 15–18 (deck indices 14–17) — includes Act 5 intro at slide-label 16
+for i in range(14, 18):
     SEQUENCE.append(("slide", i))
 
-# Act 5 live code page (after slide 17)
+# Act 5 live code page (after slide-label 16, the Act 5 intro)
 SEQUENCE.append(("page", "act5"))
 
-# Slides 18–22 (deck indices 17–21)
-for i in range(17, 22):
+# Slides 19–22 (deck indices 18–21)
+for i in range(18, 22):
     SEQUENCE.append(("slide", i))
 
 # JSON-serialize the sequence for the client

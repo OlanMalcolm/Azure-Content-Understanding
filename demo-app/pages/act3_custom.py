@@ -1,202 +1,323 @@
-"""Act 3 — Custom Analyzers & Classification.
+"""Act 3 — Custom analyzers and classifier routing.
 
-Shows custom analyzer definitions, classifier routing, and structured
-field extraction from 6 specialized engineering documents.
-Output starts empty — user clicks Run Live or Post-processed.
+Mirrors notebook cells 21 (analyzer definitions), 22 (deploy), 24 (classifier),
+25 (single-doc classify), 26 (classify all 6), and 28-40 (per-doc custom extraction
++ agent reasoning).
+Output starts empty — user clicks Run Live or Pre-processed.
 """
 
 from pathlib import Path
+from typing import Optional
 
-from dash import html, callback, Input, Output, ctx, no_update
+from dash import Input, Output, callback, ctx, html, no_update
 import dash_mantine_components as dmc
 
-from services.cu_client import is_configured
+from services.cu_client import (
+    CLASSIFIER_ID,
+    agent_reason,
+    get_cu_client,
+    is_configured,
+)
 
 DOCS_DIR = Path(__file__).parent.parent.parent / "src" / "sample-data" / "documents"
 
-# Code precisely from notebook cells 21-22
-ANALYZER_CODE = '''# Define ALL custom analyzers for the remaining 6 documents
+
+# Files routed by classifier → analyzer. Tuple format:
+#   (filename, expected_category, analyzer_id, doc_description_for_agent, question_for_agent)
+DOC_PIPELINE = [
+    ("cl_v3_site_b_photo_log_2026_04_10.pdf",       "Photo_Log",
+     "photoLogTriageAnalyzer",
+     "Photo Log — GPS-indexed field photos with priority ratings",
+     "What's the triage assessment? How urgent is dispatch?"),
+    ("cl_v3_site_b_video_inspection_2026_04_10.pdf", "Video_Inspection",
+     "videoInspectionAnalyzer",
+     "Video Inspection Index — 6 segments with damage classification",
+     "Does video confirm photo evidence? Is damage stable or worsening?"),
+    ("cl_v3_engineering_splice_sheet_2026_04_28.pdf", "Splice_Sheet",
+     "fiberSpliceExtractor",
+     "Engineering Splice Sheet — strand-level OTDR loss measurements",
+     "What is the root cause? Should we re-splice or replace conduit?"),
+    ("cl_v3_datacenter_fiber_routing_2026_04_28.pdf", "Fiber_Routing",
+     "fiberRoutingAnalyzer",
+     "Fiber Routing Diagram — primary and backup paths with customer counts",
+     "Is there redundancy? What happens if this conduit fails?"),
+    ("cl_v3_equipment_spec_sheet_2026_05_03.pdf",    "Equipment_Spec",
+     "equipmentProcurementAnalyzer",
+     "Equipment Spec & Materials Order — procurement data with costs and lead times",
+     "Are we within budget? Any schedule risks from backorders?"),
+    ("cl_v3_datacenter_plant_diagram_2026_04_28.pdf", "Plant_Diagram",
+     "plantDiagramAnalyzer",
+     "Data Center Plant Diagram — facility layout with fiber paths and cooling",
+     "Where does fiber enter? Any secondary risks in the affected zone?"),
+]
+
+
+# ---------------------------------------------------------------------------
+# Displayed code — condensed from notebook cells 21, 22, 24, 26
+# ---------------------------------------------------------------------------
+
+ANALYZER_CODE = '''# Notebook cell 21 — define ALL custom analyzers for the 6 remaining documents
 CUSTOM_ANALYZERS = {
     "photoLogTriageAnalyzer": {
-        "description": "Triage field photo logs — extract priority findings "
-                       "and recommend dispatch urgency for the repair agent.",
+        "description": "Triage field photo logs — extract priority findings and "
+                       "recommend dispatch urgency for the repair agent.",
         "baseAnalyzerId": "prebuilt-document",
         "scenario": "document",
         "models": {"completion": "gpt-4.1"},
         "fieldSchema": {"fields": {
-            "HighPriorityCount": {"type": "integer", "method": "generate",
+            "HighPriorityCount":  {"type": "integer", "method": "generate",
                 "description": "Count of photos/entries marked HIGH priority."},
-            "CriticalFindings": {"type": "string", "method": "generate",
-                "description": "Summarize all HIGH-priority findings in one paragraph."},
-            "DispatchUrgency": {"type": "string", "method": "generate",
-                "description": "IMMEDIATE / URGENT / SCHEDULED. Explain reasoning."},
-        }}
+            "CriticalFindings":   {"type": "string",  "method": "generate",
+                "description": "Summarize all HIGH-priority findings in one paragraph. "
+                               "Include location (GPS if available), subject, and why critical."},
+            "DispatchUrgency":    {"type": "string",  "method": "generate",
+                "description": "IMMEDIATE (>3 HIGH or safety risk), URGENT (1-3 HIGH), "
+                               "or SCHEDULED (no HIGH). Explain reasoning in one sentence."},
+        }},
     },
-    "videoInspectionAnalyzer": {
-        "fields": ["CriticalSegments", "EscalationRequired", "DamageProgression"]
-    },
-    "fiberSpliceExtractor": {
-        "fields": ["CableType", "StrandCount", "FailedStrands",
-                   "FailureMode", "MaxLoss", "EngineeringRecommendation"]
-    },
-    "fiberRoutingAnalyzer": {
-        "fields": ["RedundancyGap", "AffectedCustomers",
-                   "SinglePointOfFailure", "RerouteOption"]
-    },
-    "equipmentProcurementAnalyzer": {
-        "fields": ["TotalCost", "BackorderRisk",
-                   "CriticalPathDays", "BudgetVerdict"]
-    },
-    "plantDiagramAnalyzer": {
-        "fields": ["FiberEntryPoint", "ThermalRisk",
-                   "AffectedZone", "FieldNotes"]
-    },
+    "videoInspectionAnalyzer":     {"fields": ["CriticalSegments", "EscalationRequired",
+                                               "DamageProgression"]},
+    "fiberSpliceExtractor":        {"fields": ["CableType", "StrandCount", "FailedStrands",
+                                               "FailureMode", "MaxLoss",
+                                               "EngineeringRecommendation"]},
+    "fiberRoutingAnalyzer":        {"fields": ["RedundancyGap", "AffectedCustomers",
+                                               "SinglePointOfFailure", "RerouteOption"]},
+    "equipmentProcurementAnalyzer":{"fields": ["TotalCost", "BackorderRisk",
+                                               "CriticalPathDays", "BudgetVerdict"]},
+    "plantDiagramAnalyzer":        {"fields": ["FiberEntryPoint", "ThermalRisk",
+                                               "AffectedZone", "FieldNotes"]},
 }
 
-# Deploy all custom analyzers
+# Notebook cell 22 — deploy each analyzer
 from azure.ai.contentunderstanding.models import (
-    ContentAnalyzer, ContentFieldSchema,
-    ContentFieldDefinition, ContentFieldType, GenerationMethod,
+    ContentAnalyzer, ContentFieldSchema, ContentFieldDefinition,
+    ContentFieldType, GenerationMethod,
 )
+_TYPE_MAP = {"string": ContentFieldType.STRING,
+             "integer": ContentFieldType.INTEGER,
+             "number":  ContentFieldType.NUMBER}
 
-for name, schema in CUSTOM_ANALYZERS.items():
+for analyzer_id, schema in CUSTOM_ANALYZERS.items():
     fields = {
-        fname: ContentFieldDefinition(
-            type=ContentFieldType.STRING,
+        name: ContentFieldDefinition(
+            type=_TYPE_MAP[fdef["type"]],
             method=GenerationMethod.GENERATE,
             description=fdef["description"],
         )
-        for fname, fdef in schema["fieldSchema"]["fields"].items()
+        for name, fdef in schema["fieldSchema"]["fields"].items()
     }
     poller = client.begin_create_analyzer(
-        analyzer_id=name,
+        analyzer_id=analyzer_id,
         resource=ContentAnalyzer(
-            base_analyzer_id="prebuilt-document",
+            base_analyzer_id=schema["baseAnalyzerId"],
             description=schema["description"],
             field_schema=ContentFieldSchema(fields=fields),
             models=schema["models"],
         ),
         allow_replace=True,
     )
-    result = poller.result()
-    print(f"  {name}: ✅ ready")
+    poller.result()
+    print(f"  {analyzer_id}: ✅ ready")
 '''
 
-# Classifier code from notebook cell 24-25
-CLASSIFIER_CODE = '''# Create a classifier that routes documents to custom analyzers
+CLASSIFIER_CODE = '''# Notebook cell 24 — deploy the classifier that auto-routes to custom analyzers
+from azure.ai.contentunderstanding.models import (
+    ContentAnalyzer, ContentAnalyzerConfig, ContentCategoryDefinition,
+)
 CLASSIFIER_ID = "fiberFieldDocClassifier"
 
 categories = {
-    "Photo_Log": ContentCategoryDefinition(
-        description="GPS-indexed photo logs with priority ratings",
+    "Photo_Log":        ContentCategoryDefinition(
+        description="GPS-indexed photo logs from field inspections with priority "
+                    "ratings (HIGH/MEDIUM/LOW) for each photo entry.",
         analyzer_id="photoLogTriageAnalyzer"),
     "Video_Inspection": ContentCategoryDefinition(
-        description="Video inspection index with timestamps and damage",
+        description="Video inspection index documents listing numbered video segments "
+                    "with timestamps, locations, damage classifications.",
         analyzer_id="videoInspectionAnalyzer"),
-    "Splice_Sheet": ContentCategoryDefinition(
-        description="Fiber splice sheets with OTDR loss measurements",
+    "Splice_Sheet":     ContentCategoryDefinition(
+        description="Engineering fiber splice sheets with strand-level OTDR loss "
+                    "measurements, color codes, pass/fail status.",
         analyzer_id="fiberSpliceExtractor"),
-    "Fiber_Routing": ContentCategoryDefinition(
-        description="Network fiber routing diagrams",
+    "Fiber_Routing":    ContentCategoryDefinition(
+        description="Network fiber routing diagrams showing primary and backup paths.",
         analyzer_id="fiberRoutingAnalyzer"),
-    "Equipment_Spec": ContentCategoryDefinition(
-        description="Equipment specs and materials orders",
+    "Equipment_Spec":   ContentCategoryDefinition(
+        description="Equipment specification and materials order documents with "
+                    "part numbers, quantities, costs, lead times.",
         analyzer_id="equipmentProcurementAnalyzer"),
-    "Plant_Diagram": ContentCategoryDefinition(
-        description="Facility plant diagrams with fiber paths",
+    "Plant_Diagram":    ContentCategoryDefinition(
+        description="Data center or facility plant diagrams showing rack layouts, "
+                    "fiber paths, cooling systems.",
         analyzer_id="plantDiagramAnalyzer"),
 }
 
-poller = client.begin_create_analyzer(
-    analyzer_id=CLASSIFIER_ID,
-    resource=classifier,
-    allow_replace=True,
+classifier = ContentAnalyzer(
+    base_analyzer_id="prebuilt-document",
+    description="Routes field service documents to the correct custom analyzer",
+    config=ContentAnalyzerConfig(return_details=True, enable_segment=False,
+                                 content_categories=categories),
+    models={"completion": "gpt-4.1"},
 )
-result = poller.result()
-print(f"✅ Classifier '{CLASSIFIER_ID}' deployed!")
+client.begin_create_analyzer(analyzer_id=CLASSIFIER_ID,
+                             resource=classifier,
+                             allow_replace=True).result()
 
-# Classify and route — single call handles both
-with open(test_doc, "rb") as f:
-    classify_result = client.begin_analyze_binary(
-        analyzer_id=CLASSIFIER_ID, binary_input=f.read()
-    ).result()
-
-# Result has category + extracted fields
-doc_content = classify_result.contents[0]
-print(f"Category: {doc_content.segments[0].category}")
-for fname, fval in doc_content.fields.items():
-    print(f"  {fname}: {fval.value}")
+# Notebook cell 26 — single call: classify + route + extract
+for filename, expected in test_docs:
+    with open(DOCS_DIR / filename, "rb") as f:
+        r = client.begin_analyze_binary(analyzer_id=CLASSIFIER_ID,
+                                        binary_input=f.read()).result()
+    dc = r.contents[0]
+    category = dc.segments[0].category if dc.segments else "(unknown)"
+    print(f"{filename:<50} {category:<20} "
+          f"{'✅' if category == expected else '❌'}")
+    if dc.fields:
+        for fname, fval in dc.fields.items():
+            print(f"     {fname}: {fval.value or fval.value_string}")
 '''
 
-# Post-processed outputs from notebook
-EXTRACTION_RESULTS = """━━━ photoLogTriageAnalyzer ━━━━━━━━━━━━━━━━━━━━
-  HighPriorityCount: 3
-  CriticalFindings: Vault crack propagation, water intrusion at conduit entry,
-    strand displacement at bracket contact points (strands 4 & 7)
-  DispatchUrgency: IMMEDIATE (>3 HIGH items or safety risk)
 
-━━━ videoInspectionAnalyzer ━━━━━━━━━━━━━━━━━━━━
-  CriticalSegments: VID-05 (52:30-78:00): Vault TV-3 -- CRITICAL (recurring);
-    VID-06 (78:00-95:00): Section 5 -- heave
-  EscalationRequired: YES. Recurring and worsening crack in Vault TV-3
-  DamageProgression: Worsening — Vault TV-3 crack increased from <1cm in
-    January to 2cm in April
+# ---------------------------------------------------------------------------
+# Cached outputs — directly from notebook cells 26 + 29 + 31 + 33 + 36 + 38 + 40
+# ---------------------------------------------------------------------------
 
-━━━ fiberSpliceExtractor ━━━━━━━━━━━━━━━━━━━━━━
-  CableType: G.652D Single-Mode, 12-strand SM OS2
-  StrandCount: 12
-  FailedStrands: SM-5 (Slate, 0.52 dB/km, MARGINAL); SM-11 (Rose, 0.55 dB/km, FAIL)
-  FailureMode: micro-bend from conduit pressure
-  MaxLoss: 0.55
-  EngineeringRecommendation: Full segment replacement — re-splice insufficient
-
-━━━ fiberRoutingAnalyzer ━━━━━━━━━━━━━━━━━━━━━━━
-  RedundancyGap: Route 2 shares conduit with Route 1 in Sections 3-5
-  AffectedCustomers: 42
-  SinglePointOfFailure: Shared conduit at Vault TV-3, segment 9
-  RerouteOption: No alternative — full conduit replacement required
-
-━━━ equipmentProcurementAnalyzer ━━━━━━━━━━━━━━━
-  TotalCost: $6,829
-  BackorderRisk: Vault Anchors (VA-HEL-6FT): backorder (ETA pushed to 05/15)
-  CriticalPathDays: 10
-  BudgetVerdict: WITHIN BUDGET ($6,829 of $120,000)
-
-━━━ plantDiagramAnalyzer ━━━━━━━━━━━━━━━━━━━━━━━
-  FiberEntryPoint: North penetration, Bay 7 ODF
-  ThermalRisk: No thermal issues noted
-  AffectedZone: Zone C — rows 3-5, racks C3-1 through C5-4
-  FieldNotes: "Segment 9 shared conduit — recommend full replacement by Q3"
-    — annotated by K. Okonkwo, 2026-04-28
-"""
-
-CLASSIFICATION_TABLE = """### Classifier Results: 6/6 Correct
-
-Document                                           Classified As        Correct?
-────────────────────────────────────────────────── ──────────────────── ────────
+CLASSIFICATION_CACHED = """Document                                           Classified As        Correct?
+-------------------------------------------------- -------------------- --------
 cl_v3_site_b_photo_log_2026_04_10.pdf              Photo_Log            ✅
 cl_v3_site_b_video_inspection_2026_04_10.pdf       Video_Inspection     ✅
 cl_v3_engineering_splice_sheet_2026_04_28.pdf      Splice_Sheet         ✅
 cl_v3_datacenter_fiber_routing_2026_04_28.pdf      Fiber_Routing        ✅
 cl_v3_equipment_spec_sheet_2026_05_03.pdf          Equipment_Spec       ✅
 cl_v3_datacenter_plant_diagram_2026_04_28.pdf      Plant_Diagram        ✅
-
-✅ Classifier correctly identifies all document types.
-   In production, a single endpoint call handles classification and extraction.
 """
+
+EXTRACTIONS_CACHED = """━━━ Photo_Log → photoLogTriageAnalyzer ━━━━━━━━━━━━━━━━━━━━
+  HighPriorityCount: 3
+  CriticalFindings: Three HIGH-priority findings: (1) Pole TR-38 base erosion at GPS 34.0522,-118.2437, (2) Surface crack above conduit at GPS 34.0530,-118.2420, and (3) Section 5 pavement heave at GPS 34.0540,-118.2400. These are critical due to structural risks to the corridor, potential conduit failure, and possible service disruption.
+  DispatchUrgency: URGENT (1-3 HIGH items). There are 3 HIGH-priority findings, which require prompt attention but do not exceed the threshold for IMMEDIATE dispatch.
+
+AGENT [1/6]:
+- The photo log identifies 3 HIGH-priority findings: pole base erosion, surface crack above conduit, and pavement heave, all posing structural and conduit risks.
+- GPS coordinates confirm these issues are distributed along the Tower Ridge Corridor, directly affecting Segment 9 and potentially impacting 42 customers.
+- The triage assessment rates dispatch urgency as URGENT, indicating prompt action is required, but it does not meet the IMMEDIATE threshold (more than 3 HIGH items).
+- The critical findings specifically threaten conduit integrity and service continuity, increasing the risk of signal degradation.
+
+Conclusion: Dispatch should be prioritized urgently for Segment 9, but immediate mobilization is not mandated based on current triage.
+
+
+━━━ Video_Inspection → videoInspectionAnalyzer ━━━━━━━━━━━━━━━━━━━━
+  CriticalSegments: VID-05 (52:30-78:00): Vault TV-3 -- CRITICAL (recurring); VID-06 (78:00-95:00): Section 5 -- heave (shared conduit)
+  EscalationRequired: YES. Escalation to engineering is required due to the recurring and worsening crack in Vault TV-3 and pavement heave in Section 5, both of which threaten service continuity.
+  DamageProgression: The damage is worsening, as evidenced by the Vault TV-3 conduit crack increasing from less than 1cm in January to 2cm in April, patch separation, and new ground movement and pavement heave observed.
+
+AGENT [2/6]:
+- Video inspection confirms photo evidence, showing recurring and worsening damage in Vault TV-3 (crack increased from <1cm in January to 2cm in April).
+- Section 5 exhibits new ground movement and pavement heave, matching prior photo documentation and indicating shared conduit risk.
+- Patch separation and escalation to engineering are recommended due to the threat to service continuity for 42 customers.
+- Damage is not stable; it is actively worsening, as shown by crack progression and new heave.
+
+Conclusion: Video evidence corroborates photo findings, and damage is worsening, requiring immediate engineering escalation.
+
+
+━━━ Splice_Sheet → fiberSpliceExtractor ━━━━━━━━━━━━━━━━━━━━
+  CableType: 12-SM OS2 Tight
+  StrandCount: 12
+  FailedStrands: SM-5 (Slate, 0.52 dB/km, MARGINAL); SM-7 (Red, 0.48 dB/km, MARGINAL); SM-11 (Rose, 0.55 dB/km, FAIL)
+  FailureMode: Conduit is root cause.
+  MaxLoss: 0.55
+  EngineeringRecommendation: Aerial bypass for Route 2 BEFORE conduit replacement.
+
+AGENT [3/6]:
+- OTDR loss measurements show three strands with elevated attenuation: SM-5 (0.52 dB/km, marginal), SM-7 (0.48 dB/km, marginal), and SM-11 (0.55 dB/km, fail).
+- The failure mode is explicitly identified as "Conduit is root cause," indicating physical conduit damage or contamination is impacting fiber performance.
+- Engineering recommendation is to implement an aerial bypass for Route 2 before proceeding with conduit replacement, suggesting re-splicing alone will not resolve the issue.
+- Max strand loss (0.55 dB/km) exceeds acceptable thresholds, confirming conduit-related degradation rather than splice faults.
+
+Conclusion: The root cause is conduit failure; replacing the conduit (with interim aerial bypass) is necessary, not just re-splicing.
+
+
+━━━ Fiber_Routing → fiberRoutingAnalyzer ━━━━━━━━━━━━━━━━━━━━
+  RedundancyGap: Route 2 shares conduit with Route 1 in Sections 3-5
+  AffectedCustomers: 42
+  SinglePointOfFailure: Conduit CDT-TR-003, CDT-TR-004, CDT-TR-005 through Section 5 (shared by Route 1 and Route 2)
+  RerouteOption: No alternative — full conduit replacement required
+
+AGENT [4/6]:
+- Both primary (Route 1) and backup (Route 2) fiber routes share the same conduit (CDT-TR-003, CDT-TR-004, CDT-TR-005) through Sections 3-5, creating a single point of failure.
+- If this shared conduit fails, all 42 customers in the affected segment will lose service, as both routes are compromised.
+- There is no alternative reroute option available; full conduit replacement is required to restore connectivity.
+- The redundancy gap means that the backup path does not provide true protection in this segment.
+
+Conclusion: There is no effective redundancy in Sections 3-5—failure of the shared conduit will result in total service loss for 42 customers.
+
+
+━━━ Equipment_Spec → equipmentProcurementAnalyzer ━━━━━━━━━━━━━━━━━━━━
+  TotalCost: 6829.0
+  BackorderRisk: Vault Anchors (VA-HEL-6FT): backorder (ETA pushed to 05/15)
+  CriticalPathDays: 10
+  BudgetVerdict: WITHIN BUDGET ($6829 of $120000)
+
+AGENT [5/6]:
+- The total procurement cost is $6,829, which is well within the allocated budget of $120,000.
+- Vault Anchors (VA-HEL-6FT) are on backorder, with their estimated arrival date pushed to 05/15.
+- The critical path for equipment delivery is 10 days, but the backorder could extend this timeline if anchors are essential for restoration.
+- No other materials are flagged for backorder, minimizing broader supply chain risks.
+- Schedule risk exists due to the delayed Vault Anchors, potentially impacting restoration for 42 customers.
+
+Conclusion: We are within budget, but the Vault Anchor backorder (ETA 05/15) poses a schedule risk for Segment 9 restoration.
+
+
+━━━ Plant_Diagram → plantDiagramAnalyzer ━━━━━━━━━━━━━━━━━━━━
+  FiberEntryPoint: CARRIER DEMARC
+  ThermalRisk: CRAC-2 issue. If conduit fails, ODF-A+B down.
+  AffectedZone: C05-C08
+  FieldNotes: NOTE (05/01): FIBER: ODF-A/B fed via Sec 3-5 (42 cust). C05-C08 hot. CRAC-2 issue. If conduit fails, ODF-A+B down.
+Ref: FRD-2026-04-28, FSE-2026-0041. --Sharma
+
+APPROVED:
+
+K. Nakamura, PE 2026-04-28
+
+M. Webb, Ops Mgr 2026-04-29
+
+AGENT [6/6]:
+- Fiber enters the facility at the CARRIER DEMARC point, as indicated in the diagram.
+- The affected zone is C05-C08, which is currently experiencing elevated temperatures ("hot"), increasing operational risk.
+- There is a secondary risk from the CRAC-2 cooling unit; if it fails, both ODF-A and ODF-B (fiber distribution frames) will go down.
+- The fiber serving 42 customers is routed via Sections 3-5, directly through the affected zone.
+- If the conduit in C05-C08 fails, signal loss will impact both ODF-A and ODF-B, amplifying customer impact.
+
+Conclusion: Fiber enters at CARRIER DEMARC; secondary risk is high in C05-C08 due to CRAC-2 issues and potential conduit failure affecting ODF-A/B and 42 customers.
+"""
+
+
+# ---------------------------------------------------------------------------
+# Layout
+# ---------------------------------------------------------------------------
+
+PRE_STYLE = {
+    "fontFamily": "var(--mono)",
+    "fontSize": "0.70rem",
+    "lineHeight": "1.5",
+    "whiteSpace": "pre-wrap",
+}
 
 
 def _empty_output():
     return [
         html.Div("Output", className="demo-panel-header"),
         dmc.Center(
-            dmc.Text("Press  ▶ Run Live  or  📦 Post-processed  to execute", c="dimmed", size="sm"),
+            dmc.Text(
+                "Press  \u25B6 Run Live  or  \U0001F4E6 Pre-processed  to execute",
+                c="dimmed", size="sm",
+            ),
             style={"height": "100%", "flex": "1"},
         ),
     ]
 
 
-def _output_tabs(extraction_text, classification_text):
+def _output_tabs(extractions_text, classification_text):
     return [
         html.Div("Output", className="demo-panel-header"),
         dmc.Tabs(
@@ -206,16 +327,10 @@ def _output_tabs(extraction_text, classification_text):
                     dmc.TabsTab("Field Extractions", value="extractions"),
                     dmc.TabsTab("Classification", value="classification"),
                 ]),
-                dmc.TabsPanel(
-                    html.Pre(extraction_text, style={"fontFamily": "var(--mono)", "fontSize": "0.7rem",
-                                                     "lineHeight": "1.5", "whiteSpace": "pre-wrap"}),
-                    value="extractions", pt="md",
-                ),
-                dmc.TabsPanel(
-                    html.Pre(classification_text, style={"fontFamily": "var(--mono)", "fontSize": "0.7rem",
-                                                         "lineHeight": "1.5", "whiteSpace": "pre-wrap"}),
-                    value="classification", pt="md",
-                ),
+                dmc.TabsPanel(html.Pre(extractions_text, style=PRE_STYLE),
+                              value="extractions", pt="md"),
+                dmc.TabsPanel(html.Pre(classification_text, style=PRE_STYLE),
+                              value="classification", pt="md"),
             ],
         ),
     ]
@@ -235,23 +350,27 @@ def _doc_card(title, desc, color):
 
 
 def act3_layout():
-    """Build the Act 3 live demo page layout."""
     live_available = is_configured()
 
     return html.Div([
         html.Div(
-            style={"display": "flex", "justifyContent": "space-between", "alignItems": "center",
-                   "padding": "16px 24px 0 24px"},
+            style={
+                "display": "flex", "justifyContent": "space-between", "alignItems": "center",
+                "padding": "16px 24px 0 24px",
+            },
             children=[
                 dmc.Group([
                     dmc.Badge("Act 3", color="teal", variant="filled", size="lg"),
-                    dmc.Title("Deep Extraction — Custom Analyzers & Classification", order=4, c="white"),
+                    dmc.Title("Deep Extraction — Custom Analyzers & Classification",
+                              order=4, c="white"),
                 ]),
                 dmc.Group([
-                    dmc.Badge("READY", color="gray", variant="light", size="sm", id="act3-mode-badge"),
-                    dmc.Button("▶ Run Live", id="act3-run-btn", variant="light", size="xs",
-                               color="green", disabled=not live_available),
-                    dmc.Button("📦 Post-processed", id="act3-cached-btn", variant="light", size="xs", color="blue"),
+                    dmc.Badge("READY", color="gray", variant="light", size="sm",
+                              id="act3-mode-badge"),
+                    dmc.Button("\u25B6 Run Live", id="act3-run-btn", variant="light",
+                               size="xs", color="green", disabled=not live_available),
+                    dmc.Button("\U0001F4E6 Pre-processed", id="act3-cached-btn",
+                               variant="light", size="xs", color="blue"),
                 ]),
             ],
         ),
@@ -271,13 +390,15 @@ def act3_layout():
                                 dmc.TabsTab("Classifier", value="classifier"),
                             ]),
                             dmc.TabsPanel(
-                                dmc.CodeHighlight(code=ANALYZER_CODE, language="python", withCopyButton=False,
-                                                  style={"fontSize": "0.72rem"}),
+                                dmc.CodeHighlight(code=ANALYZER_CODE, language="python",
+                                                  withCopyButton=False,
+                                                  style={"fontSize": "0.70rem"}),
                                 value="analyzers", pt="md",
                             ),
                             dmc.TabsPanel(
-                                dmc.CodeHighlight(code=CLASSIFIER_CODE, language="python", withCopyButton=False,
-                                                  style={"fontSize": "0.72rem"}),
+                                dmc.CodeHighlight(code=CLASSIFIER_CODE, language="python",
+                                                  withCopyButton=False,
+                                                  style={"fontSize": "0.70rem"}),
                                 value="classifier", pt="md",
                             ),
                         ],
@@ -286,11 +407,11 @@ def act3_layout():
 
                 # Center: 6 Documents
                 html.Div(className="demo-panel", children=[
-                    html.Div("📁 6 Field Documents", className="demo-panel-header"),
+                    html.Div("\U0001F4C1 6 Field Documents", className="demo-panel-header"),
                     dmc.Stack([
                         _doc_card("Photo Log", "GPS-indexed field photos with priority ratings", "teal"),
                         _doc_card("Video Inspection", "6 segments with damage classification", "blue"),
-                        _doc_card("Splice Sheet", "Strand-level loss measurements", "violet"),
+                        _doc_card("Splice Sheet", "Strand-level OTDR loss measurements", "violet"),
                         _doc_card("Fiber Routing", "Primary & backup path topology", "orange"),
                         _doc_card("Equipment Spec", "Procurement data & budget", "green"),
                         _doc_card("Plant Diagram", "Facility layout with fiber paths", "pink"),
@@ -302,8 +423,92 @@ def act3_layout():
             ],
         ),
 
-        html.Div("← → to navigate", className="nav-hint"),
+        html.Div("\u2190 \u2192 to navigate", className="nav-hint"),
     ])
+
+
+# ---------------------------------------------------------------------------
+# Live runner — classify + extract for all 6 docs, then agent_reason per doc
+# ---------------------------------------------------------------------------
+
+
+def _format_field_value(fval) -> str:
+    v = fval.value if fval.value is not None else fval.value_string
+    return str(v)
+
+
+def _run_live_extractions():
+    """Run classifier on each doc for classification table, then the matched
+    custom analyzer for field extraction + agent_reason. Mirrors notebook
+    cells 26 + 28-40."""
+    from azure.ai.contentunderstanding import to_llm_input
+    from typing import cast
+    from azure.ai.contentunderstanding.models import DocumentContent
+
+    client = get_cu_client()
+    if client is None:
+        return ("\u26A0\uFE0F CU client not configured", "\u26A0\uFE0F CU client not configured")
+
+    classify_lines = [
+        f"{'Document':<50} {'Classified As':<20} {'Correct?'}",
+        f"{'-'*50} {'-'*20} {'-'*8}",
+    ]
+    extract_lines: list[str] = []
+
+    for i, (filename, expected, analyzer_id, doc_desc, question) in enumerate(DOC_PIPELINE, start=1):
+        doc_path = DOCS_DIR / filename
+        if not doc_path.exists():
+            classify_lines.append(f"{filename:<50} {'(missing)':<20} ❌")
+            continue
+
+        pdf_bytes = doc_path.read_bytes()
+
+        # Classify (cell 26 pattern)
+        try:
+            classify_result = client.begin_analyze_binary(
+                analyzer_id=CLASSIFIER_ID, binary_input=pdf_bytes
+            ).result()
+            cdc = cast(DocumentContent, classify_result.contents[0]) if classify_result.contents else None
+            category = (cdc.segments[0].category if cdc and cdc.segments else None) or "(unknown)"
+        except Exception as e:
+            category = f"(error: {type(e).__name__})"
+            classify_lines.append(f"{filename:<50} {category:<20} ❌")
+            extract_lines.append(f"━━━ {filename} ━━━\n  ⚠️ Classify error: {e}\n")
+            continue
+        correct = "✅" if category == expected else "❌"
+        classify_lines.append(f"{filename:<50} {category:<20} {correct}")
+
+        # Extract fields via the actual custom analyzer (cells 28-40 pattern)
+        extract_lines.append(f"━━━ {category} → {analyzer_id} ━━━━━━━━━━━━━━━━━━━━")
+        try:
+            extract_result = client.begin_analyze_binary(
+                analyzer_id=analyzer_id, binary_input=pdf_bytes
+            ).result()
+            edc = cast(DocumentContent, extract_result.contents[0]) if extract_result.contents else None
+            if edc and edc.fields:
+                for fname, fval in edc.fields.items():
+                    extract_lines.append(f"  {fname}: {_format_field_value(fval)}")
+            else:
+                extract_lines.append("  (no fields returned)")
+        except Exception as e:
+            extract_lines.append(f"  ⚠️ Extract error: {type(e).__name__}: {e}")
+            extract_result = None
+
+        # Agent reasoning per doc (notebook cells 29/31/33/36/38/40)
+        if extract_result is not None:
+            try:
+                reasoning = agent_reason(
+                    to_llm_input(extract_result, include_markdown=False),
+                    doc_desc, question,
+                )
+            except Exception as e:  # pragma: no cover
+                reasoning = f"(agent reasoning failed: {e})"
+            extract_lines.append("")
+            extract_lines.append(f"AGENT [{i}/6]:")
+            extract_lines.append(reasoning)
+        extract_lines.append("")
+
+    return ("\n".join(extract_lines), "\n".join(classify_lines))
 
 
 @callback(
@@ -315,83 +520,19 @@ def act3_layout():
     prevent_initial_call=True,
 )
 def run_act3(run_clicks, cached_clicks):
-    """Execute live or show post-processed results."""
     triggered = ctx.triggered_id
 
     if triggered == "act3-cached-btn":
-        return _output_tabs(EXTRACTION_RESULTS, CLASSIFICATION_TABLE), "POST-PROCESSED", "blue"
+        return _output_tabs(EXTRACTIONS_CACHED, CLASSIFICATION_CACHED), "PRE-PROCESSED", "blue"
 
     if triggered == "act3-run-btn":
-        import os
-        from typing import cast
-        from dotenv import load_dotenv
-        from azure.ai.contentunderstanding import ContentUnderstandingClient, to_llm_input
-        from azure.ai.contentunderstanding.models import (
-            ContentAnalyzer, ContentFieldSchema, ContentFieldDefinition,
-            ContentFieldType, GenerationMethod, ContentAnalyzerConfig,
-            ContentCategoryDefinition, DocumentContent,
-        )
-        from azure.core.credentials import AzureKeyCredential
-
-        load_dotenv(override=True)
-        endpoint = os.environ.get("CONTENTUNDERSTANDING_ENDPOINT", "")
-        key = os.getenv("CONTENTUNDERSTANDING_KEY")
-
-        if not endpoint:
-            return _output_tabs("⚠️ CONTENTUNDERSTANDING_ENDPOINT not set", ""), "ERROR", "red"
-
-        credential = AzureKeyCredential(key) if key else None
-        client = ContentUnderstandingClient(endpoint=endpoint, credential=credential,
-                                            user_agent="build26-DEM331-demo/1.0.0")
-
-        output_lines = []
         try:
-            # Route all 6 documents through classifier (deploy + classify)
-            CLASSIFIER_ID = "fiberFieldDocClassifier"
-
-            test_docs = [
-                ("cl_v3_site_b_photo_log_2026_04_10.pdf", "Photo_Log"),
-                ("cl_v3_site_b_video_inspection_2026_04_10.pdf", "Video_Inspection"),
-                ("cl_v3_engineering_splice_sheet_2026_04_28.pdf", "Splice_Sheet"),
-                ("cl_v3_datacenter_fiber_routing_2026_04_28.pdf", "Fiber_Routing"),
-                ("cl_v3_equipment_spec_sheet_2026_05_03.pdf", "Equipment_Spec"),
-                ("cl_v3_datacenter_plant_diagram_2026_04_28.pdf", "Plant_Diagram"),
-            ]
-
-            classify_output = "Classification Results:\n\n"
-            extraction_output = ""
-
-            for filename, expected in test_docs:
-                doc_path = DOCS_DIR / filename
-                if not doc_path.exists():
-                    classify_output += f"  {filename}: ⚠️ file not found\n"
-                    continue
-
-                with open(doc_path, "rb") as f:
-                    p = client.begin_analyze_binary(
-                        analyzer_id=CLASSIFIER_ID, binary_input=f.read()
-                    )
-                r = p.result()
-
-                if r.contents:
-                    dc = cast(DocumentContent, r.contents[0])
-                    classified = "(unknown)"
-                    if dc.segments and len(dc.segments) > 0:
-                        classified = dc.segments[0].category or "(unknown)"
-                    correct = "✅" if classified == expected else "❌"
-                    classify_output += f"  {filename:<50} {classified:<20} {correct}\n"
-
-                    if dc.fields:
-                        extraction_output += f"\n━━━ {classified} ━━━\n"
-                        for fname, fval in dc.fields.items():
-                            v = fval.value if fval.value is not None else fval.value_string
-                            extraction_output += f"  {fname}: {v}\n"
-                else:
-                    classify_output += f"  {filename}: empty result\n"
-
-            return _output_tabs(extraction_output or "No extractions returned", classify_output), "LIVE", "green"
-
+            extractions, classification = _run_live_extractions()
+            return _output_tabs(extractions, classification), "LIVE", "green"
         except Exception as e:
-            return _output_tabs(f"⚠️ Error: {type(e).__name__}: {e}", ""), "ERROR", "red"
+            return (
+                _output_tabs(f"⚠️ Error: {type(e).__name__}: {e}", ""),
+                "ERROR", "red",
+            )
 
     return no_update, no_update, no_update

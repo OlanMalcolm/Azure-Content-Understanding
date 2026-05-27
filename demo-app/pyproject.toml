@@ -4,7 +4,10 @@ version = "0.1.0"
 description = "DEM331 Hybrid Presentation — Slide Deck + Live Code Demo App"
 requires-python = ">=3.12"
 dependencies = [
+    "agent-framework-azure-contentunderstanding>=1.0.0a0",
+    "agent-framework-foundry>=1.6.0",
     "azure-ai-contentunderstanding>=1.2.0b1",
+    "azure-identity>=1.26.0b2",
     "dash>=4.3.0rc0",
     "dash-iconify>=0.1.2",
     "dash-mantine-components>=2.7.0",
@@ -16,3 +19,13 @@ dependencies = [
 
 [project.scripts]
 demo = "app:main"
+
+[tool.uv]
+# agent-framework-azure-contentunderstanding pins azure-ai-contentunderstanding<1.1,
+# but the notebook (and Acts 1-4) require to_llm_input() which only exists in
+# 1.2.0b1+. Override the conflict — the framework's CU provider works fine
+# against the newer SDK at runtime.
+override-dependencies = [
+    "azure-ai-contentunderstanding>=1.2.0b1",
+]
+prerelease = "allow"

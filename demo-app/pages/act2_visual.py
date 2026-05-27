@@ -1,50 +1,40 @@
-"""Act 2 — Visual & Audio Evidence Extraction.
+"""Act 2 — Multi-modal evidence: audio transcript + inspection photos.
 
-Shows inspection photos and audio transcript processing with CU figure
-captions and agent reasoning across multi-modal evidence.
-Output starts empty — user clicks Run Live or Post-processed.
+Mirrors notebook cells 15-16 (audio extraction + agent reasoning) and
+cells 18-19 (inspection photos with AI figure captions + agent reasoning).
+Output starts empty — user clicks Run Live or Pre-processed.
 """
 
 from pathlib import Path
 
-from dash import html, callback, Input, Output, ctx, no_update
+from dash import Input, Output, callback, ctx, html, no_update
 import dash_mantine_components as dmc
 
-from components.doc_viewer import create_doc_viewer
-from services.cu_client import is_configured
-
-SAMPLE_AUDIO = Path(__file__).parent.parent.parent / "src" / "sample-data" / "documents" / "cl_v3_site_b_audio_transcript_2026_04_15.pdf"
-SAMPLE_PHOTOS = Path(__file__).parent.parent.parent / "src" / "sample-data" / "documents" / "cl_v3_inspection_photos_2026_05_02.pdf"
-
-# Code exactly as in the notebook
-PHOTOS_CODE = '''# THE DOCUMENT — 6 embedded field photos with GPS stamps
-photos = DOCS_DIR / "cl_v3_inspection_photos_2026_05_02.pdf"
-
-# CU generates figure descriptions — the agent can "see" through text
-photos_result = analyze_document(photos)
-show_extraction_summary(photos_result)
-
-photos_md = photos_result.contents[0].markdown
-print(photos_md[:1800])
-
-reasoning = agent_reason(
-    to_llm_input(photos_result),
-    "Inspection Photos (May 2) — 6 GPS-tagged field photos with AI captions",
-    "Does visual evidence confirm the text-based findings? Is damage progressing?"
+from services.cu_client import (
+    agent_reason,
+    analyze_document,
+    extraction_summary,
+    is_configured,
 )
-print("AGENT REASONING:")
-print(reasoning)
-'''
 
-AUDIO_CODE = '''# Audio transcript — conversational content
-audio_transcript = DOCS_DIR / "cl_v3_site_b_audio_transcript_2026_04_15.pdf"
+DOCS_DIR = Path(__file__).parent.parent.parent / "src" / "sample-data" / "documents"
+AUDIO_PDF = DOCS_DIR / "cl_v3_site_b_audio_transcript_2026_04_15.pdf"
+PHOTOS_PDF = DOCS_DIR / "cl_v3_inspection_photos_2026_05_02.pdf"
 
+
+# ---------------------------------------------------------------------------
+# Displayed code — literally from notebook cells 16 (audio) and 19 (photos)
+# ---------------------------------------------------------------------------
+
+AUDIO_CODE = '''# Notebook cell 16 — audio transcript with CU
+display(Markdown("### CU Extraction: Conversational Content"))
 audio_result = analyze_document(audio_transcript)
 show_extraction_summary(audio_result)
 
 audio_md = audio_result.contents[0].markdown
 print(audio_md[:1200])
 
+print("\\n" + "─" * 60)
 reasoning = agent_reason(
     to_llm_input(audio_result),
     "Field Audio Transcript — technician and inspector walking the corridor (Apr 15)",
@@ -54,100 +44,185 @@ print("AGENT REASONING:")
 print(reasoning)
 '''
 
-# Post-processed outputs (from notebook run)
-PHOTOS_OUTPUT = """### CU Extraction: 6 Figures with AI Captions
+PHOTOS_CODE = '''# Notebook cell 19 — inspection photos with AI figure captions
+display(Markdown("### CU Extraction: Figures with AI-Generated Captions"))
+photos_result = analyze_document(photos)
+show_extraction_summary(photos_result)
 
-**Figure 1:** Exterior view of underground vault TV-3 showing surface-level
-concrete crack running NE-SW, approximately 18 inches long. GPS: 38.9201, -77.0152
+photos_md = photos_result.contents[0].markdown
+print(photos_md[:1800])
 
-**Figure 2:** Close-up of conduit entry point with visible water staining
-and mineral deposits indicating chronic moisture intrusion. Cable bundle visible.
+print("\\n" + "─" * 60)
+reasoning = agent_reason(
+    to_llm_input(photos_result),
+    "Inspection Photos (May 2) — 6 GPS-tagged field photos with AI captions",
+    "Does visual evidence confirm the text-based findings? Is damage progressing?"
+)
+print("AGENT REASONING:")
+print(reasoning)
+'''
 
-**Figure 3:** Interior splice tray showing fiber strand displacement.
-Strands 4 and 7 show visible micro-bend at support bracket contact point.
 
-**Figure 4:** OTDR trace screenshot showing elevated loss at 847m mark
-(0.82 dB splice loss vs 0.15 dB baseline). Annotated by technician.
+# ---------------------------------------------------------------------------
+# Cached outputs — captured directly from notebook .ipynb cell 16 + 19 stdout
+# ---------------------------------------------------------------------------
 
-**Figure 5:** Thermal image of vault showing heat differential at conduit
-penetration — 4.2°C above ambient, indicating active water flow path.
+AUDIO_CACHED = """**CU extracted:** **0 table(s)** • **15 paragraphs**
 
-**Figure 6:** Repaired section from January emergency splice (reference photo).
-Visible re-entry marks on cable sheath. Original repair by TC-Bravo.
+# FIELD AUDIO TRANSCRIPT Zava Telecom -- Field Operations
 
----
-**CU extracted:** **6 figure(s)** • **8 paragraphs** • GPS coordinates preserved
+Site B | Segment 9 | Date: 2026-04-15 | Duration: 47:22
+
+Personnel: P. Sharma (Field Tech), J. Alvarez (Inspector)
+
+
+## TRANSCRIPT EXCERPT (12:30 - 18:45)
+
+[12:30] SHARMA: Approaching vault TV-3. Visual on the conduit entry.
+
+[12:42] SHARMA: Yeah, I can see the crack. It's worse than January (INC-2025-1187) .
+
+[12:55] ALVAREZ: Photographing now. The displacement is about 3 centimeters.
+
+[13:10] SHARMA: The protective sleeve is completely off. That's your micro-bend.
+
+[13:25] ALVAREZ: Confirmed. This matches the OTDR anomaly at 847 meters.
+
+[14:02] SHARMA: Moving to splice enclosure. SE-24F housing looks intact.
+
+[14:15] SHARMA: No moisture inside. Seals are good.
+
+[14:30] ALVAREZ: I'm checking the barrier. It's shifted about 15 centimeters.
+
+[15:00] SHARMA: The ground heave is getting worse. This whole section needs--
+
+[15:05] SHARMA: --needs a full conduit replacement. Patching won't hold. Route 2 shares this conduit.
+
+[15:20] ALVAREZ: Agreed. I'll flag it in my report for engineering review.
+
+[16:00] SHARMA: Strand check on 5 and 7. Still showing elevated loss.
+
+[16:15] SHARMA: Not a splice issue. It's the conduit applyin
+
+────────────────────────────────────────────────────────────
+AGENT REASONING:
+- The transcript confirms the maintenance log findings: the conduit crack at vault TV-3 has worsened since January, with a 3 cm displacement and the protective sleeve fully off, matching prior documented degradation.
+- Field assessment identifies the root cause of signal loss on strands 5 and 7 as conduit pressure, not splice faults, directly corroborating maintenance log diagnostics.
+- OTDR anomaly at 847 meters is physically verified in the field, strengthening the log's technical evidence.
+- Both personnel recommend full conduit replacement, stating patching is insufficient—this aligns with maintenance log recommendations for major remediation.
+- The transcript notes 42 customers are exposed with no backup, consistent with log risk assessments, and confirms engineering routing analysis completion.
+
+**Conclusion:** The field audio transcript fully corroborates maintenance log findings and supports urgent conduit replacement at Site B, Segment 9.
 """
 
-REASONING_OUTPUT = """### Agent Reasoning: Multi-Modal Corroboration
+PHOTOS_CACHED = """**CU extracted:** **6 figure(s)** • **8 paragraphs**
 
-• **Visual evidence (photos):** Crack at vault TV-3, water intrusion confirmed,
-  strand displacement at bracket contact points (strands 4 & 7)
+# SITE INSPECTION -- PHOTO DOCUMENTATION Zava Telecom -- Field Operations
 
-• **Audio evidence (transcript):** Tech Martinez states "it's worse than January"
-  — references prior emergency repair. Inspector Okonkwo notes "shared conduit
-  means if primary goes, backup goes with it"
+DOC-PHOTO-2026-05-02-TR9
 
-• **Correlation:** Both sources point to vault TV-3, segment 9 at ~847m mark.
-  The crack is propagating (18" now vs 6" in January photo).
+Inspector: J. Alvarez | Date: 2026-05-02 | Site B, Segment 9
 
-• **Escalation trigger:** Inspector explicitly says "no redundancy path" —
-  matches the incident alert's severity assessment.
 
-• **Timeline:** Deterioration accelerated between April 8 repair and May 2
-  inspection (24 days). Rate suggests full failure within 2-3 weeks.
+PHOTO 1: Vault TV-3 Interior
 
-**Conclusion:** Vault TV-3 shared conduit failure is confirmed by photo, audio,
-and OTDR evidence. Immediate full replacement required — repair-in-place will not
-hold given the structural crack progression.
+Conduit crack visible at 12 o'clock.
+Water intrusion. Ref: FSE-2026-0041 SM-11.
+
+![2026-05-02 11:00 GPS:34.0538](figures/1.1 "Circular vault interior with a gray circular ring near the center.
+Multiple scattered circular spots of varying sizes in shades of brown and gray around and inside the ring.
+A vertical crack or line at the top center (12 o'clock position) extending slightly inward from the ring.
+A vertical wavy blue line inside the ring, slightly right of center.
+Bottom left corner contains a black rectangular label with yellow text: "2026-05-02 11:00 GPS:34.0538".")
+
+
+PHOTO 2: Cable Stress Point
+
+![SLEEVE 2026-05-02 11:15 GPS:34.0538](figures/1.2 "Image of a cable with multiple colored strands extending from a dark circular conduit on the left.
+Yellow rectangular box labeled 'SLEEVE' around a section of the cable near the conduit entry.
+Red arrow pointing rightward along the cable strands within the yellow box.
+Text in bottom left corner: '2026-05-02 11:15 GPS:34.0538'.
+Background is dark gray.
+No numeric scales or units visible on the image.")
+
+Micro-bend at conduit entry.
+
+Sleeve displaced 8cm. Micro-bend source.
+
+
+PHOTO 3: Splice Enclosure
+SE-24F housing intact.
+No moisture detected.
+
+![SE-24F SPLICE ENCL OK OK OK OK 2026-05-02 12:30 GPS:34.0542](figures/1.3 "Gray rectangular splice enclosure with label \"SE-24F SPLICE ENCL\" on upper section.
+Four green hexagonal indicators below label, each labeled \"OK\".
+Black screws at corners of enclosure.
+Three black circular connectors at bottom of enclosure.
+Timestamp and GPS coordinates in black box with yellow text: \"2026-05-02 
+
+────────────────────────────────────────────────────────────
+AGENT REASONING:
+- Visual evidence in Photo 1 confirms a conduit crack with water intrusion at Vault TV-3, matching text-based findings and referencing FSE-2026-0041 SM-11.
+- Photo 2 shows cable stress with an 8cm sleeve displacement and a visible micro-bend at the conduit entry, directly supporting the reported cable stress point.
+- Photo 4 documents a 3cm pavement heave above the shared conduit (Rt1+Rt2), indicating surface damage and potential progression, as the offset is specifically measured.
+- Photo 5 reveals a Jersey barrier displaced by 15cm since the last survey, suggesting worsening ground movement near the conduit.
+- Photo 6 confirms ground erosion at Pole TR-38 base but notes guy wire tension remains OK, aligning with text descriptions.
+
+Conclusion: The inspection photos provide clear visual confirmation of the text-based findings, with evidence of progressing damage (e.g., sleeve displacement, pavement heave, barrier shift) affecting the shared conduit and 42 customers at risk.
 """
+
+
+# ---------------------------------------------------------------------------
+# Layout
+# ---------------------------------------------------------------------------
+
+PRE_STYLE = {
+    "fontFamily": "var(--mono)",
+    "fontSize": "0.72rem",
+    "lineHeight": "1.5",
+    "whiteSpace": "pre-wrap",
+}
 
 
 def _empty_output():
-    """Initial empty state."""
     return [
         html.Div("Output", className="demo-panel-header"),
         dmc.Center(
-            dmc.Text("Press  ▶ Run Live  or  📦 Post-processed  to execute", c="dimmed", size="sm"),
+            dmc.Text(
+                "Press  \u25B6 Run Live  or  \U0001F4E6 Pre-processed  to execute",
+                c="dimmed", size="sm",
+            ),
             style={"height": "100%", "flex": "1"},
         ),
     ]
 
 
-def _output_tabs(photos_text, reasoning_text):
-    """Build output tabs."""
+def _output_tabs(photos_text, audio_text):
     return [
         html.Div("Output", className="demo-panel-header"),
         dmc.Tabs(
             value="photos",
             children=[
                 dmc.TabsList([
-                    dmc.TabsTab("Figure Captions", value="photos"),
-                    dmc.TabsTab("Agent Reasoning", value="reasoning"),
+                    dmc.TabsTab("Photos + Reasoning", value="photos"),
+                    dmc.TabsTab("Audio + Reasoning", value="audio"),
                 ]),
-                dmc.TabsPanel(
-                    html.Pre(photos_text, style={"fontFamily": "var(--mono)", "fontSize": "0.72rem",
-                                                 "lineHeight": "1.5", "whiteSpace": "pre-wrap"}),
-                    value="photos", pt="md",
-                ),
-                dmc.TabsPanel(
-                    html.Pre(reasoning_text, style={"fontFamily": "var(--mono)", "fontSize": "0.72rem",
-                                                    "lineHeight": "1.5", "whiteSpace": "pre-wrap"}),
-                    value="reasoning", pt="md",
-                ),
+                dmc.TabsPanel(html.Pre(photos_text, style=PRE_STYLE), value="photos", pt="md"),
+                dmc.TabsPanel(html.Pre(audio_text, style=PRE_STYLE), value="audio", pt="md"),
             ],
         ),
     ]
 
 
 def act2_layout():
-    """Build the Act 2 live demo page layout."""
     live_available = is_configured()
 
     return html.Div([
         html.Div(
-            style={"display": "flex", "justifyContent": "space-between", "alignItems": "center",
-                   "padding": "16px 24px 0 24px"},
+            style={
+                "display": "flex", "justifyContent": "space-between", "alignItems": "center",
+                "padding": "16px 24px 0 24px",
+            },
             children=[
                 dmc.Group([
                     dmc.Badge("Act 2", color="violet", variant="filled", size="lg"),
@@ -155,9 +230,10 @@ def act2_layout():
                 ]),
                 dmc.Group([
                     dmc.Badge("READY", color="gray", variant="light", size="sm", id="act2-mode-badge"),
-                    dmc.Button("▶ Run Live", id="act2-run-btn", variant="light", size="xs",
+                    dmc.Button("\u25B6 Run Live", id="act2-run-btn", variant="light", size="xs",
                                color="green", disabled=not live_available),
-                    dmc.Button("📦 Post-processed", id="act2-cached-btn", variant="light", size="xs", color="blue"),
+                    dmc.Button("\U0001F4E6 Pre-processed", id="act2-cached-btn", variant="light",
+                               size="xs", color="blue"),
                 ]),
             ],
         ),
@@ -166,9 +242,9 @@ def act2_layout():
             className="demo-page",
             style={"height": "calc(100vh - 60px)", "paddingTop": "12px"},
             children=[
-                # Left: Document images
+                # Left: Document tabs (photos + audio)
                 html.Div(className="demo-panel", children=[
-                    html.Div("📷 Documents", className="demo-panel-header"),
+                    html.Div("\U0001F4F7 Documents", className="demo-panel-header"),
                     dmc.Tabs(
                         value="photos",
                         children=[
@@ -177,13 +253,17 @@ def act2_layout():
                                 dmc.TabsTab("Audio Transcript", value="audio"),
                             ]),
                             dmc.TabsPanel(
-                                html.Img(src="/static/docs/inspection_photos.png",
-                                         style={"width": "100%", "borderRadius": "8px"}),
+                                html.Img(
+                                    src="/static/docs/inspection_photos.png",
+                                    style={"width": "100%", "borderRadius": "8px"},
+                                ),
                                 value="photos", pt="md",
                             ),
                             dmc.TabsPanel(
-                                html.Img(src="/static/docs/audio_transcript.png",
-                                         style={"width": "100%", "borderRadius": "8px"}),
+                                html.Img(
+                                    src="/static/docs/audio_transcript.png",
+                                    style={"width": "100%", "borderRadius": "8px"},
+                                ),
                                 value="audio", pt="md",
                             ),
                         ],
@@ -201,26 +281,54 @@ def act2_layout():
                                 dmc.TabsTab("Audio Transcript", value="audio"),
                             ]),
                             dmc.TabsPanel(
-                                dmc.CodeHighlight(code=PHOTOS_CODE, language="python", withCopyButton=False,
-                                                  style={"fontSize": "0.76rem"}),
+                                dmc.CodeHighlight(code=PHOTOS_CODE, language="python",
+                                                  withCopyButton=False,
+                                                  style={"fontSize": "0.74rem"}),
                                 value="photos", pt="md",
                             ),
                             dmc.TabsPanel(
-                                dmc.CodeHighlight(code=AUDIO_CODE, language="python", withCopyButton=False,
-                                                  style={"fontSize": "0.76rem"}),
+                                dmc.CodeHighlight(code=AUDIO_CODE, language="python",
+                                                  withCopyButton=False,
+                                                  style={"fontSize": "0.74rem"}),
                                 value="audio", pt="md",
                             ),
                         ],
                     ),
                 ]),
 
-                # Right: Output (starts empty)
+                # Right: Output
                 html.Div(className="demo-panel", id="act2-output-panel", children=_empty_output()),
             ],
         ),
 
-        html.Div("← → to navigate", className="nav-hint"),
+        html.Div("\u2190 \u2192 to navigate", className="nav-hint"),
     ])
+
+
+# ---------------------------------------------------------------------------
+# Live runner — mirrors notebook cells 16 (audio) and 19 (photos)
+# ---------------------------------------------------------------------------
+
+
+def _extract_and_reason(pdf_path: Path, preview_chars: int, doc_description: str, question: str) -> str:
+    """Run CU + agent_reason for one document, formatted like the notebook output."""
+    from azure.ai.contentunderstanding import to_llm_input
+
+    result = analyze_document(pdf_path, analyzer_id="prebuilt-documentSearch")
+    if not result or not result.contents:
+        return "\u26A0\uFE0F CU returned empty result"
+    md = result.contents[0].markdown or ""
+
+    lines = [extraction_summary(result), "", md[:preview_chars]]
+    lines.append("")
+    lines.append("─" * 60)
+    try:
+        reasoning = agent_reason(to_llm_input(result), doc_description, question)
+    except Exception as e:  # pragma: no cover
+        reasoning = f"(agent reasoning failed: {e})"
+    lines.append("AGENT REASONING:")
+    lines.append(reasoning)
+    return "\n".join(lines)
 
 
 @callback(
@@ -232,98 +340,32 @@ def act2_layout():
     prevent_initial_call=True,
 )
 def run_act2(run_clicks, cached_clicks):
-    """Execute live or show post-processed results."""
     triggered = ctx.triggered_id
 
     if triggered == "act2-cached-btn":
-        return _output_tabs(PHOTOS_OUTPUT, REASONING_OUTPUT), "POST-PROCESSED", "blue"
+        return _output_tabs(PHOTOS_CACHED, AUDIO_CACHED), "PRE-PROCESSED", "blue"
 
     if triggered == "act2-run-btn":
-        import os
-        from dotenv import load_dotenv
-        from azure.ai.contentunderstanding import ContentUnderstandingClient, to_llm_input
-        from azure.core.credentials import AzureKeyCredential
-        from openai import AzureOpenAI
-
-        load_dotenv(override=True)
-        endpoint = os.environ.get("CONTENTUNDERSTANDING_ENDPOINT", "")
-        key = os.getenv("CONTENTUNDERSTANDING_KEY")
-
-        if not endpoint:
-            return _output_tabs("⚠️ CONTENTUNDERSTANDING_ENDPOINT not set", ""), "ERROR", "red"
-
-        credential = AzureKeyCredential(key) if key else None
-        client = ContentUnderstandingClient(endpoint=endpoint, credential=credential,
-                                            user_agent="build26-DEM331-demo/1.0.0")
-        agent_client = AzureOpenAI(azure_endpoint=endpoint, api_key=key, api_version="2025-04-01-preview")
-
-        # Analyze photos — use prebuilt-documentSearch for AI figure captions
-        photos_text = ""
         try:
-            with open(SAMPLE_PHOTOS, "rb") as f:
-                poller = client.begin_analyze_binary(analyzer_id="prebuilt-documentSearch", binary_input=f.read())
-            photos_result = poller.result()
-            if photos_result.contents:
-                content = photos_result.contents[0]
-                # Show extraction summary like the notebook does
-                parts = []
-                if content.figures:
-                    parts.append(f"**{len(content.figures)} figure(s)**")
-                if content.paragraphs:
-                    parts.append(f"**{len(content.paragraphs)} paragraphs**")
-                summary = "CU extracted: " + " • ".join(parts) + "\n\n" if parts else ""
-                photos_text = summary + content.markdown
-            else:
-                # Fallback to prebuilt-layout if documentSearch returns empty
-                with open(SAMPLE_PHOTOS, "rb") as f:
-                    poller = client.begin_analyze_binary(analyzer_id="prebuilt-layout", binary_input=f.read())
-                photos_result = poller.result()
-                if photos_result.contents:
-                    photos_text = "(fallback: prebuilt-layout)\n\n" + photos_result.contents[0].markdown
-                else:
-                    photos_text = "⚠️ CU returned empty result for photos"
+            photos_text = _extract_and_reason(
+                PHOTOS_PDF,
+                preview_chars=1800,
+                doc_description="Inspection Photos (May 2) — 6 GPS-tagged field photos with AI captions",
+                question="Does visual evidence confirm the text-based findings? Is damage progressing?",
+            )
         except Exception as e:
-            photos_text = f"⚠️ Error: {e}"
+            photos_text = f"⚠️ Photos error: {type(e).__name__}: {e}"
 
-        # Analyze audio + agent reasoning — use prebuilt-documentSearch
-        reasoning_text = ""
         try:
-            with open(SAMPLE_AUDIO, "rb") as f:
-                poller = client.begin_analyze_binary(analyzer_id="prebuilt-documentSearch", binary_input=f.read())
-            audio_result = poller.result()
-            if not audio_result.contents:
-                # Fallback
-                with open(SAMPLE_AUDIO, "rb") as f:
-                    poller = client.begin_analyze_binary(analyzer_id="prebuilt-layout", binary_input=f.read())
-                audio_result = poller.result()
-
-            if audio_result.contents:
-                audio_md = audio_result.contents[0].markdown
-                # Agent reasoning
-                response = agent_client.chat.completions.create(
-                    model="gpt-4.1",
-                    messages=[
-                        {"role": "system", "content": (
-                            "You are the Fiber Cut Response Agent for Zava Telecom. "
-                            "You are analyzing documents related to incident INC-2026-0391. "
-                            "Given CU extraction output, provide 3-5 bullet points of key reasoning. "
-                            "End with a one-line conclusion."
-                        )},
-                        {"role": "user", "content": (
-                            "Document: Field Audio Transcript + Inspection Photos\n"
-                            "Question: Does evidence corroborate findings? Is damage progressing?\n\n"
-                            f"CU Extraction:\n{audio_md}\n\n{photos_text}"
-                        )},
-                    ],
-                    temperature=0.2,
-                    max_tokens=400,
-                )
-                reasoning_text = f"Audio extraction:\n{audio_md}\n\n{'─'*40}\nAGENT REASONING:\n{response.choices[0].message.content}"
-            else:
-                reasoning_text = "⚠️ CU returned empty result for audio"
+            audio_text = _extract_and_reason(
+                AUDIO_PDF,
+                preview_chars=1200,
+                doc_description="Field Audio Transcript — technician and inspector walking the corridor (Apr 15)",
+                question="Does this corroborate the maintenance log findings? What's the field assessment?",
+            )
         except Exception as e:
-            reasoning_text = f"⚠️ Error: {e}"
+            audio_text = f"⚠️ Audio error: {type(e).__name__}: {e}"
 
-        return _output_tabs(photos_text, reasoning_text), "LIVE", "green"
+        return _output_tabs(photos_text, audio_text), "LIVE", "green"
 
     return no_update, no_update, no_update
