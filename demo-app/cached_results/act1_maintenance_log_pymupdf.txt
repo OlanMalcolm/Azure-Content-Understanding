@@ -1,0 +1,146 @@
+Pages: 1
+════════════════════════════════════════════════════════════
+RAW TEXT OUTPUT (first 2000 chars):
+════════════════════════════════════════════════════════════
+
+SITE MAINTENANCE LOG -- TOWER RIDGE CORRIDOR
+Site B -- Segment 9 (Pole TR-38 to JB-9B) | Log Period: 2026-Q2
+LOG-TR-2026-Q2
+MAINTENANCE ACTIVITY LOG
+Date
+Time
+Tech
+Activity
+Duration
+Sign-Off
+04/10
+08:00
+Alvarez
+Full corridor walk + photo
+6.5h
+[signed]
+04/10
+08:00
+Alvarez
+Video documentation (incl.)
+(incl.)
+[signed]
+04/15
+14:30
+Sharma
+Follow-up walk + strand check
+3.0h
+[signed]
+04/15
+15:00
+Sharma
+Barrier reinstallation
+0.5h
+[signed]
+04/20
+09:00
+Team C
+Survey walk (Steps 1,3)
+4.0h
+[signed]
+04/22
+07:00
+Team A
+OTDR testing all routes
+5.5h
+[signed]
+04/22
+13:00
+Team A
+Emergency splice Str 7,11
+3.5h
+[signed]
+04/28
+08:30
+Nakamura
+Engineering assessment
+4.0h
+[signed]
+04/28
+08:30
+Sharma
+Splice verification
+3.0h
+[signed]
+05/02
+07:30
+Alvarez
+Post-storm inspection
+5.0h
+[signed]
+05/02
+14:00
+Team A
+Emergency barrier repair
+2.0h
+[signed]
+05/05
+09:00
+GeoCorp
+Vault measurement update
+3.0h
+[ext. sign]
+LABOR SUMMARY -- REACTIVE MAINTENANCE
+Crew/Person
+Hours Q2
+Rate
+Cost
+Budget Code
+Alvarez (Inspector)
+14.5
+$85/h
+$1,233
+INSP-TR-Q2
+Sharma (Field Tech)
+11.0
+$95/h
+$1,045
+TECH-TR-Q2
+Team A (Fiber Crew)
+11.0
+$180/h
+$1,980
+CREW-TR-Q2
+Team C (General)
+4.0
+$120/h
+$480
+CREW-TR-Q2
+Nakamura (Engineer)
+4.0
+$150/h
+$600
+ENG-TR-Q2
+GeoCorp (External)
+3.0
+$220/h
+$660
+EXT-TR-Q2
+TOTAL: 47.5h
+$5,998
+RELATED INCIDENTS & DOCUMENTS
+INC-2025-1187 | Micro-bend Jan 2026      | Repair Report 2026-01-15 | CLOSED
+INC-2026-0089 | Fiber break Mar 2026     | Repair Report 2026-03-01 | CLOSED
+WO-2026-0287  | Conduit replace Phase 1  | Completed 2026-03-25     | CLOSED
+WO-2026-0391  | Emergency re-assessment  | In Progress              | OPEN
+CR-2026-04-10 | Full corridor condition  | Condition Report         | ACTIVE
+FSE-2026-0041 | Splice engineering sheet | As-Built 2026-04-28      | CURRENT
+ADDENDUM -- Webb 05/06:
+REVIEW CHECKLIST:
+Field data verified
+Budget codes confirmed
+Escalation required
+J. Alvarez
+Lead Inspector
+Date: 2026-05-06
+P. Sharma
+Senior Field Tech
+Date: 2026-05-06
+M. Webb
+Operations Manager
+Date: 202
