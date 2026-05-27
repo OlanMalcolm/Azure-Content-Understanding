@@ -251,7 +251,7 @@ FSE-2026-00
 Total raw text: 2,930 chars
 """
 
-CU_CACHED = """**CU extracted:** **2 table(s)** • **8 paragraphs** • **1 barcode/QR** • **2☒ 1☐ selection marks**
+CU_CACHED = """**CU extracted:** **2 table(s)** • **158 paragraphs** • **1 barcode/QR** • **2☒ 1☐ selection marks**
 
 LOCAL PyMuPDF                       │ CONTENT UNDERSTANDING
 ────────────────────────────────────┼────────────────────────────────────

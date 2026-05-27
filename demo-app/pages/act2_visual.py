@@ -67,7 +67,7 @@ print(reasoning)
 # Cached outputs — captured directly from notebook .ipynb cell 16 + 19 stdout
 # ---------------------------------------------------------------------------
 
-AUDIO_CACHED = """**CU extracted:** **0 table(s)** • **15 paragraphs**
+AUDIO_CACHED = """**CU extracted:** **36 paragraphs**
 
 # FIELD AUDIO TRANSCRIPT Zava Telecom -- Field Operations
 
@@ -115,7 +115,7 @@ AGENT REASONING:
 **Conclusion:** The field audio transcript fully corroborates maintenance log findings and supports urgent conduit replacement at Site B, Segment 9.
 """
 
-PHOTOS_CACHED = """**CU extracted:** **6 figure(s)** • **8 paragraphs**
+PHOTOS_CACHED = """**CU extracted:** **6 figure(s)** • **32 paragraphs**
 
 # SITE INSPECTION -- PHOTO DOCUMENTATION Zava Telecom -- Field Operations
 
