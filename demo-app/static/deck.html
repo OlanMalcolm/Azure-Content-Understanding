@@ -361,6 +361,340 @@
     .arrow { color: var(--muted); font-size: 28px; }
     .arrow-down { color: var(--muted); font-size: 28px; }
 
+    /* Act 4 pipeline diagram (Slide 13) */
+    .cu-pipeline {
+      display: grid;
+      grid-template-columns: 0.9fr 70px 1.35fr 28px 1fr 28px 1.05fr;
+      align-items: stretch;
+      gap: 10px;
+      margin-top: 10px;
+      width: 100%;
+    }
+
+    .pipeline-col {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .pipeline-col-title {
+      font-size: 11px;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 2px;
+    }
+
+    .pipeline-card {
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.03);
+      box-shadow: var(--shadow);
+    }
+
+    .pipeline-card.blue { border-color: rgba(59,130,246,.32); background: rgba(59,130,246,.09); }
+    .pipeline-card.purple { border-color: rgba(167,139,250,.32); background: rgba(167,139,250,.08); }
+    .pipeline-card.green { border-color: rgba(34,197,94,.32); background: rgba(34,197,94,.09); }
+
+    .pipeline-card h4 {
+      margin: 0 0 4px;
+      font-size: 14px;
+      letter-spacing: .02em;
+      color: var(--text);
+    }
+
+    .pipeline-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12.5px;
+      line-height: 1.5;
+    }
+
+    .pipeline-arrow {
+      display: grid;
+      place-items: center;
+      color: rgba(167,139,250,.55);
+      font-size: 22px;
+      font-weight: 700;
+      align-self: center;
+    }
+
+    .doc-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .doc-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 9px;
+      border-radius: 7px;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.07);
+      font-size: 12px;
+      font-family: var(--mono);
+      color: var(--text);
+    }
+
+    .doc-row .doc-icon {
+      width: 18px;
+      display: inline-grid;
+      place-items: center;
+      font-size: 13px;
+    }
+
+    .doc-row.pdf { border-left: 3px solid rgba(59,130,246,.6); }
+    .doc-row.audio { border-left: 3px solid rgba(34,197,94,.6); }
+    .doc-row.image { border-left: 3px solid rgba(245,158,11,.6); }
+    .doc-row.video { border-left: 3px solid rgba(244,114,182,.7); }
+
+    .doc-row .doc-arrow {
+      color: rgba(167,139,250,.65);
+      font-size: 11px;
+      margin: 0 2px;
+    }
+
+    .doc-row .doc-output {
+      color: var(--muted);
+      font-size: 11.5px;
+    }
+
+    .doc-legend {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+      flex-wrap: wrap;
+    }
+
+    .doc-legend span::before {
+      content: "■ ";
+      margin-right: 2px;
+    }
+
+    .doc-legend .lg-pdf::before { color: rgba(59,130,246,.85); }
+    .doc-legend .lg-audio::before { color: rgba(34,197,94,.85); }
+    .doc-legend .lg-image::before { color: rgba(245,158,11,.85); }
+    .doc-legend .lg-video::before { color: rgba(244,114,182,.9); }
+
+    .cu-flow {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 6px;
+    }
+
+    .cu-step {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      background: rgba(59,130,246,.08);
+      border: 1px solid rgba(59,130,246,.22);
+      border-radius: 8px;
+      font-size: 12.5px;
+    }
+
+    .cu-step .cu-num {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: rgba(59,130,246,.25);
+      color: var(--primary);
+      font-weight: 800;
+      font-size: 11px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+    }
+
+    .cu-step .cu-text { flex: 1; color: var(--text); }
+    .cu-step .cu-text .sub { color: var(--muted); font-size: 11.5px; display: block; margin-top: 1px; }
+
+    .cu-fork {
+      display: flex;
+      gap: 8px;
+    }
+
+    .cu-fork .cu-branch {
+      flex: 1;
+      padding: 8px 10px;
+      background: rgba(59,130,246,.08);
+      border: 1px solid rgba(59,130,246,.22);
+      border-radius: 8px;
+      font-size: 12px;
+      text-align: center;
+    }
+
+    .cu-fork .cu-branch strong { display: block; color: var(--text); font-size: 12.5px; margin-bottom: 2px; }
+    .cu-fork .cu-branch .sub { color: var(--muted); font-size: 11px; }
+
+    .cu-fork-or {
+      align-self: center;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .1em;
+    }
+
+    /* SVG fan-in: sources → CU box */
+    .cu-fanin {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      align-self: stretch;
+    }
+    .cu-fanin svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+    .cu-fanin path {
+      fill: none;
+      stroke: rgba(59,130,246,.55);
+      stroke-width: 1;
+    }
+
+    /* CU pills (Classify → Route) */
+    .cu-pills {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      align-items: center;
+      margin: 8px 0 6px;
+    }
+    .cu-pill {
+      background: rgba(59,130,246,.18);
+      border: 1px solid rgba(59,130,246,.45);
+      color: var(--text);
+      padding: 5px 14px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .cu-pill-arrow {
+      color: rgba(167,139,250,.7);
+      font-size: 14px;
+    }
+
+    /* CU fan-out area: SVG + analyzer chip list */
+    .cu-fanout-area {
+      display: grid;
+      grid-template-columns: 44px 1fr;
+      gap: 4px;
+      margin-top: 2px;
+    }
+    .cu-fanout-svg {
+      position: relative;
+      min-height: 280px;
+    }
+    .cu-fanout-svg svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+    .cu-fanout-svg path {
+      fill: none;
+      stroke: rgba(167,139,250,.55);
+      stroke-width: 1;
+    }
+    .cu-chip-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .cu-group-label {
+      font-size: 9.5px;
+      font-weight: 800;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding-left: 2px;
+      margin-top: 4px;
+    }
+    .cu-group-label:first-child { margin-top: 0; }
+    .cu-chip {
+      padding: 4px 9px;
+      background: rgba(255,255,255,.03);
+      border: 1px solid rgba(255,255,255,.08);
+      border-left: 3px solid rgba(59,130,246,.6);
+      border-radius: 5px;
+      font-size: 11.5px;
+      font-family: var(--mono);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .cu-chip .cu-tag {
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-left: auto;
+    }
+    .cu-chip.prebuilt { border-left-color: rgba(59,130,246,.65); }
+    .cu-chip.custom { border-left-color: rgba(167,139,250,.65); }
+
+    .agent-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      margin-top: 8px;
+    }
+
+    .agent-step {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 7px 10px;
+      background: rgba(34,197,94,.07);
+      border-left: 3px solid rgba(34,197,94,.65);
+      border-radius: 6px;
+    }
+
+    .agent-step .step-num {
+      font-weight: 800;
+      color: var(--green);
+      font-size: 13px;
+      min-width: 14px;
+    }
+
+    .agent-step .step-text {
+      font-size: 12.5px;
+      line-height: 1.4;
+      flex: 1;
+    }
+
+    .agent-step .step-text strong {
+      display: block;
+      font-size: 12.5px;
+      margin-bottom: 1px;
+      color: var(--text);
+      letter-spacing: .04em;
+    }
+
+    .agent-step .step-text .out {
+      color: var(--muted);
+      font-size: 11.5px;
+    }
+
     .acts-list, .timeline { display: flex; flex-direction: column; gap: 14px; }
 
     .act-row {
@@ -1124,25 +1458,107 @@ cl_v3_datacenter_plant_diagram_2026_04_28.pdf      Plant_Diagram        ✅</pre
       <div class="slide-inner">
         <div class="slide-badge">Slide 13</div>
         <span class="label">Act 4 — The Agent Decides</span>
-        <h1 class="title">9 Documents → <span class="accent">Three Steps</span></h1>
-        <div class="steps-layout">
-          <div class="stepper">
-            <div class="step"><div class="step-rail"><div class="step-num">1</div><div class="step-line"></div></div><div class="step-copy"><h3>DIAGNOSE — Root Cause Analysis</h3><p>Agent synthesizes all 9 extractions → location, severity, root cause, affected strands</p></div></div>
-            <div class="step"><div class="step-rail"><div class="step-num">2</div><div class="step-line"></div></div><div class="step-copy"><h3>IDENTIFY — Materials, Budget &amp; Schedule</h3><p>Agent builds materials plan from equipment spec → part numbers, costs, backorder risks</p></div></div>
-            <div class="step"><div class="step-rail"><div class="step-num">3</div></div><div class="step-copy"><h3>DISPATCH — Resolution Email</h3><p>Agent drafts dispatch email → crew supervisor can act immediately</p></div></div>
+        <h1 class="title">From 9 Documents to a <span class="accent">Dispatched Crew</span></h1>
+        <p class="subtitle">Content Understanding turns multimodal evidence into structured intelligence — the agent reasons over it in three steps.</p>
+        <div class="cu-pipeline">
+          <div class="pipeline-col">
+            <div class="pipeline-col-title">9 Multimodal Sources</div>
+            <div class="doc-stack">
+              <div class="doc-row pdf"><span class="doc-icon">📄</span><span>maintenance_log</span></div>
+              <div class="doc-row audio"><span class="doc-icon">🎙</span><span>audio file</span><span class="doc-arrow">→</span><span class="doc-output">audio_transcript</span></div>
+              <div class="doc-row image"><span class="doc-icon">📷</span><span>inspection_photos</span></div>
+              <div class="doc-row pdf"><span class="doc-icon">📄</span><span>photo_log</span></div>
+              <div class="doc-row video"><span class="doc-icon">🎬</span><span>video file</span><span class="doc-arrow">→</span><span class="doc-output">inspection_report</span></div>
+              <div class="doc-row pdf"><span class="doc-icon">📄</span><span>splice_sheet</span></div>
+              <div class="doc-row pdf"><span class="doc-icon">📄</span><span>fiber_routing</span></div>
+              <div class="doc-row pdf"><span class="doc-icon">📄</span><span>equipment_spec</span></div>
+              <div class="doc-row pdf"><span class="doc-icon">📄</span><span>plant_diagram</span></div>
+            </div>
+            <div class="doc-legend">
+              <span class="lg-pdf">PDF</span>
+              <span class="lg-audio">Audio</span>
+              <span class="lg-video">Video</span>
+              <span class="lg-image">Image</span>
+            </div>
           </div>
-          <div class="thumb-stack" style="align-items:flex-start">
-            <div class="muted" style="font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase">All 9 Documents</div>
-            <div class="mosaic-grid">
-              <div class="thumb small"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" data-img="maintenance_log.png" alt="Maintenance Log"><div class="thumb-label">Maintenance Log</div></div>
-              <div class="thumb small"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" data-img="audio_transcript.png" alt="Audio Transcript"><div class="thumb-label">Audio Transcript</div></div>
-              <div class="thumb small"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" data-img="inspection_photos.png" alt="Photos"><div class="thumb-label">Photos</div></div>
-              <div class="thumb small"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" data-img="photo_log.png" alt="Photo Log"><div class="thumb-label">Photo Log</div></div>
-              <div class="thumb small"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" data-img="video_inspection.png" alt="Inspection Report"><div class="thumb-label">Inspection Report</div></div>
-              <div class="thumb small"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" data-img="splice_sheet.png" alt="Splice"><div class="thumb-label">Splice</div></div>
-              <div class="thumb small"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" data-img="fiber_routing.png" alt="Routing"><div class="thumb-label">Routing</div></div>
-              <div class="thumb small"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" data-img="equipment_spec.png" alt="Equipment"><div class="thumb-label">Equipment</div></div>
-              <div class="thumb small"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" data-img="plant_diagram.png" alt="Plant"><div class="thumb-label">Plant</div></div>
+          <div class="cu-fanin" aria-hidden="true">
+            <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+              <g vector-effect="non-scaling-stroke">
+                <path d="M0,11 C45,11 55,30 100,30" vector-effect="non-scaling-stroke"/>
+                <path d="M0,17 C45,17 55,30 100,30" vector-effect="non-scaling-stroke"/>
+                <path d="M0,23 C45,23 55,30 100,30" vector-effect="non-scaling-stroke"/>
+                <path d="M0,29 C45,29 55,30 100,30" vector-effect="non-scaling-stroke"/>
+                <path d="M0,35 C45,35 55,30 100,30" vector-effect="non-scaling-stroke"/>
+                <path d="M0,41 C45,41 55,30 100,30" vector-effect="non-scaling-stroke"/>
+                <path d="M0,47 C45,47 55,30 100,30" vector-effect="non-scaling-stroke"/>
+                <path d="M0,53 C45,53 55,30 100,30" vector-effect="non-scaling-stroke"/>
+                <path d="M0,59 C45,59 55,30 100,30" vector-effect="non-scaling-stroke"/>
+              </g>
+            </svg>
+          </div>
+          <div class="pipeline-col">
+            <div class="pipeline-col-title">Content Understanding</div>
+            <div class="pipeline-card blue">
+              <h4>Classify → Route → Extract</h4>
+              <p>One classifier categorizes each input, routes it to the right analyzer, and that analyzer extracts typed fields.</p>
+              <div class="cu-pills">
+                <span class="cu-pill">Classify</span>
+                <span class="cu-pill-arrow">▶</span>
+                <span class="cu-pill">Route</span>
+              </div>
+              <div class="cu-fanout-area">
+                <div class="cu-fanout-svg" aria-hidden="true">
+                  <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+                    <g vector-effect="non-scaling-stroke">
+                      <path d="M50,0 C50,4 30,13 100,13" vector-effect="non-scaling-stroke"/>
+                      <path d="M50,0 C50,4 30,15 100,15" vector-effect="non-scaling-stroke"/>
+                      <path d="M50,0 C50,4 30,17 100,17" vector-effect="non-scaling-stroke"/>
+                      <path d="M50,0 C50,24 30,38 100,38" vector-effect="non-scaling-stroke"/>
+                      <path d="M50,0 C50,30 30,48 100,48" vector-effect="non-scaling-stroke"/>
+                      <path d="M50,0 C50,36 30,58 100,58" vector-effect="non-scaling-stroke"/>
+                      <path d="M50,0 C50,42 30,68 100,68" vector-effect="non-scaling-stroke"/>
+                      <path d="M50,0 C50,48 30,78 100,78" vector-effect="non-scaling-stroke"/>
+                      <path d="M50,0 C50,54 30,88 100,88" vector-effect="non-scaling-stroke"/>
+                    </g>
+                  </svg>
+                </div>
+                <div class="cu-chip-list">
+                  <div class="cu-group-label">1 Prebuilt Analyzer<span style="color:var(--muted);font-weight:400"> · handles 3 docs</span></div>
+                  <div class="cu-chip prebuilt">documentSearch<span class="cu-tag">prebuilt</span></div>
+                  <div class="cu-group-label">6 Custom Analyzers</div>
+                  <div class="cu-chip custom">photoLogTriageAnalyzer<span class="cu-tag">custom</span></div>
+                  <div class="cu-chip custom">inspectionReportAnalyzer<span class="cu-tag">custom</span></div>
+                  <div class="cu-chip custom">fiberSpliceExtractor<span class="cu-tag">custom</span></div>
+                  <div class="cu-chip custom">fiberRoutingAnalyzer<span class="cu-tag">custom</span></div>
+                  <div class="cu-chip custom">equipmentProcurementAnalyzer<span class="cu-tag">custom</span></div>
+                  <div class="cu-chip custom">plantDiagramAnalyzer<span class="cu-tag">custom</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="pipeline-arrow">▶</div>
+          <div class="pipeline-col">
+            <div class="pipeline-col-title">Structured Context</div>
+            <div class="pipeline-card purple">
+              <h4>Assembled Context</h4>
+              <p>9 documents projected via <code style="color:var(--purple)">to_llm_input()</code> into structured markdown + YAML — concatenated into one user message for the agent.</p>
+            </div>
+            <div class="pipeline-card purple">
+              <h4>Confidence + Grounding</h4>
+              <p>Every extracted field carries a per-field confidence score and a source-grounding span — the agent can cite evidence and flag low-confidence claims.</p>
+            </div>
+          </div>
+          <div class="pipeline-arrow">▶</div>
+          <div class="pipeline-col">
+            <div class="pipeline-col-title">Fiber Cut Response Agent</div>
+            <div class="pipeline-card green">
+              <h4>Agent · three sequential steps</h4>
+              <p>The agent reasons across all 9 structured outputs and emits one operational artifact per step.</p>
+              <div class="agent-steps">
+                <div class="agent-step"><span class="step-num">1</span><div class="step-text"><strong>DIAGNOSE</strong><span class="out">Root cause · severity · affected strands</span></div></div>
+                <div class="agent-step"><span class="step-num">2</span><div class="step-text"><strong>IDENTIFY</strong><span class="out">Materials plan · costs · backorder risk</span></div></div>
+                <div class="agent-step"><span class="step-num">3</span><div class="step-text"><strong>DISPATCH</strong><span class="out">Email to crew supervisor — ready to send</span></div></div>
+              </div>
             </div>
           </div>
         </div>
@@ -1174,50 +1590,43 @@ response = agent_client.chat.completions.create(
     temperature=0.2,
 )</pre>
           </div>
-          <div style="display:flex;flex-direction:column;gap:14px">
+          <div style="display:flex;flex-direction:column;gap:10px">
             <div class="panel">
               <div class="panel-title" style="color:var(--purple)">Context assembly output</div>
-              <pre class="output-panel" style="padding:0;border:none;background:transparent;box-shadow:none">Assembling full agent context via to_llm_input():
-  maintenance_log
-  audio_transcript
-  inspection_photos
-  photo_log
-  inspection_report
-  splice_sheet
-  fiber_routing
-  equipment_spec
-  plant_diagram
+              <pre class="output-panel" style="padding:0;border:none;background:transparent;box-shadow:none;font-size:12px;line-height:1.45">Assembling full agent context via to_llm_input():
+  maintenance_log, audio_transcript, inspection_photos, photo_log, inspection_report,
+  splice_sheet, fiber_routing, equipment_spec, plant_diagram
 
 ✅ Context assembled across 9 documents</pre>
             </div>
-            <div class="panel" style="background:rgba(59,130,246,.05)">
-              <div class="panel-title">Diagnosis excerpt</div>
-              <pre class="output-panel" style="padding:0;border:none;background:transparent;box-shadow:none">DIAGNOSIS: INC-2026-0391
+            <div class="panel" style="background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.25)">
+              <div class="panel-title" style="color:#22c55e">Dispatch email — ready to send</div>
+              <pre class="output-panel" style="padding:0;border:none;background:transparent;box-shadow:none;font-size:12px;line-height:1.45">To: Team A (Fiber Crew Supervisor), GeoCorp Crew Lead
+Cc: K. Nakamura, P. Sharma, M. Webb, VP Daniels
+Subject: [CRITICAL] Conduit Replacement &amp; Fiber Restoration (INC-2026-0391)
 
-Location: Tower Ridge Corridor, Site B, Segment 9 (Pole TR-38 to JB-9B), Vault TV-3
-Severity: CRITICAL — Immediate risk of total service loss for 42 customers
-
-Root Cause: Mechanical failure of the shared underground conduit (CDT-TR-003/004/005) at Vault TV-3,
-caused by worsening crack and displacement of protective sleeve → micro-bends + elevated fiber loss.</pre>
+Priority: CRITICAL    Start: Immediate — Crew Mobilization 2026-05-08
+Scope: Remove failed conduit (CDT-TR-003/004/005) at Vault TV-3 + Sections 3-5,
+       install new Schedule 80 PVC conduit (65m, CDT-PVC-80-110) per spec …</pre>
             </div>
           </div>
         </div>
-        <div class="panel-title" style="color:var(--primary);margin-top:4px">Three projection formats for a single document — pick the format that fits the job</div>
+        <div class="panel-title" style="color:var(--primary);margin-top:4px"><code style="font-family:var(--mono);color:var(--primary)">to_llm_input()</code> — three projection modes for a single document, pick what fits the job</div>
         <div class="card-grid">
-          <div class="card"><h3>Full output<br><span style="font-weight:400;color:var(--muted);font-size:14px">5,128 chars</span></h3><pre class="output-panel" style="padding:0;border:none;background:transparent;box-shadow:none;font-size:12px">---
+          <div class="card"><h3>Full output<br><span style="font-weight:400;color:var(--muted);font-size:13px">5,128 chars</span></h3><pre class="output-panel" style="padding:0;border:none;background:transparent;box-shadow:none;font-size:11.5px">---
 contentType: document
 pages: 1
 fields:
   Summary: Site maintenance log...
 ---
 [markdown body...]</pre></div>
-          <div class="card"><h3>Fields only<br><span style="font-weight:400;color:var(--muted);font-size:14px">773 chars — 85% reduction</span></h3><pre class="output-panel" style="padding:0;border:none;background:transparent;box-shadow:none;font-size:12px">---
+          <div class="card"><h3>Fields only<br><span style="font-weight:400;color:#22c55e;font-size:13px">773 chars — 85% reduction</span></h3><pre class="output-panel" style="padding:0;border:none;background:transparent;box-shadow:none;font-size:11.5px">---
 contentType: document
 pages: 1
 fields:
   Summary: Site maintenance log...
 ---</pre></div>
-          <div class="card"><h3>With metadata<br><span style="font-weight:400;color:var(--muted);font-size:14px">RAG-ready</span></h3><pre class="output-panel" style="padding:0;border:none;background:transparent;box-shadow:none;font-size:12px">---
+          <div class="card"><h3>With metadata<br><span style="font-weight:400;color:var(--muted);font-size:13px">RAG-ready</span></h3><pre class="output-panel" style="padding:0;border:none;background:transparent;box-shadow:none;font-size:11.5px">---
 contentType: document
 source: splice_sheet_2026_04_28.pdf
 incident: INC-2026-0391
@@ -1227,30 +1636,7 @@ fields:
   FailedStrands: SM-5, SM-7, SM-11
 ---</pre></div>
         </div>
-        <div class="keypoint">Content Understanding provides structured evidence for agent reasoning. The fields-only projection cuts a single doc by 85%, slashing agent input tokens when full markdown isn't needed.</div>
-      </div>
-    </section>
-
-    <section class="slide" data-slide-label="14b">
-      <div class="slide-inner">
-        <div class="slide-badge">Slide 14b</div>
-        <span class="label">Act 4 — Dispatch Output</span>
-        <h1 class="title">Dispatch Email <span class="accent">Ready to Send</span></h1>
-        <p class="subtitle">After diagnosis, the agent produces the operational artifact a crew lead needs: a dispatch email with recipients, urgency, timing, and scope.</p>
-        <div class="email-panel">
-          <pre class="output-panel" style="padding:0;border:none;background:transparent;box-shadow:none;font-size:14px">To: Team A (Fiber Crew Supervisor), GeoCorp Crew Lead
-Cc: K. Nakamura (Engineering), P. Sharma (Field Tech), M. Webb (Ops Manager), VP Daniels
-Subject: [PRIORITY: CRITICAL] Dispatch — Conduit Replacement &amp; Fiber Restoration, 
-         Tower Ridge Corridor Site B, Segment 9 (INC-2026-0391)
-
-Priority: CRITICAL
-Start Date: Immediate — Target Crew Mobilization: 2026-05-08
-
-Scope of Work:
-- Remove failed underground conduit (CDT-TR-003/004/005) at Vault TV-3 and Sections 3-5
-- Install new Schedule 80 PVC conduit (65m, CDT-PVC-80-110) per engineering spec
-- ...</pre>
-        </div>
+        <div class="keypoint">Content Understanding provides structured evidence for agent reasoning. The fields-only projection slashes a single doc by 85%, cutting agent input tokens when full markdown isn't needed — and the agent emits a ready-to-send dispatch email a crew lead can act on.</div>
       </div>
     </section>
 
@@ -1435,6 +1821,48 @@ RESPONSE:
       const total = slides.length;
       let current = 0;
 
+      function drawPipelineLines() {
+        const fanin = document.querySelector('.cu-fanin svg');
+        const fanout = document.querySelector('.cu-fanout-svg svg');
+        if (!fanin || !fanout) return;
+
+        const faninRect = fanin.getBoundingClientRect();
+        const fanoutRect = fanout.getBoundingClientRect();
+        if (!faninRect.height || !fanoutRect.height) return; // slide not visible yet
+
+        // Fan-in: 9 source rows → CLASSIFY pill
+        const rows = document.querySelectorAll('.cu-pipeline .pipeline-col:first-child .doc-row');
+        const classify = document.querySelector('.cu-pill');
+        if (!rows.length || !classify) return;
+
+        const cR = classify.getBoundingClientRect();
+        const targetY = ((cR.top + cR.height / 2) - faninRect.top) / faninRect.height * 100;
+
+        const faninPaths = Array.from(rows).map(row => {
+          const r = row.getBoundingClientRect();
+          const y = ((r.top + r.height / 2) - faninRect.top) / faninRect.height * 100;
+          return `<path d="M0,${y.toFixed(2)} C50,${y.toFixed(2)} 50,${targetY.toFixed(2)} 100,${targetY.toFixed(2)}" vector-effect="non-scaling-stroke"/>`;
+        }).join('');
+        fanin.innerHTML = `<g vector-effect="non-scaling-stroke">${faninPaths}</g>`;
+
+        // Fan-out: top center → 7 chips (3 paths converge on documentSearch)
+        const chips = document.querySelectorAll('.cu-chip-list .cu-chip');
+        if (!chips.length) return;
+
+        const chipYs = Array.from(chips).map(chip => {
+          const r = chip.getBoundingClientRect();
+          return ((r.top + r.height / 2) - fanoutRect.top) / fanoutRect.height * 100;
+        });
+
+        const ds = chipYs[0]; // documentSearch
+        const targets = [ds - 1.6, ds, ds + 1.6, ...chipYs.slice(1)];
+        const fanoutPaths = targets.map(y => {
+          const yy = y.toFixed(2);
+          return `<path d="M50,0 C50,${(y/2.5).toFixed(2)} 30,${yy} 100,${yy}" vector-effect="non-scaling-stroke"/>`;
+        }).join('');
+        fanout.innerHTML = `<g vector-effect="non-scaling-stroke">${fanoutPaths}</g>`;
+      }
+
       function render() {
         slides.forEach((slide, index) => slide.classList.toggle('active', index === current));
         // When embedded, show parent frame position if available
@@ -1446,7 +1874,15 @@ RESPONSE:
           counter.textContent = label + ' / ' + total;
           progressBar.style.width = (((current + 1) / total) * 100) + '%';
         }
+        // Redraw pipeline diagram lines whenever a slide becomes active
+        requestAnimationFrame(drawPipelineLines);
       }
+
+      let _resizeT;
+      window.addEventListener('resize', () => {
+        clearTimeout(_resizeT);
+        _resizeT = setTimeout(drawPipelineLines, 80);
+      });
 
       function goTo(index) {
         current = Math.max(0, Math.min(index, total - 1));

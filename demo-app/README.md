@@ -82,7 +82,7 @@ demo-app/
 
 ## Tech Stack
 
-- **Python 3.12+** (managed with `uv`)
+- **Python 3.12+**
 - **Dash 4.x** + **dash-mantine-components**
-- **Azure Content Understanding SDK** (optional, for live execution)
+- **Azure Content Understanding SDK** 
 - The HTML slide deck runs in an iframe with postMessage communication

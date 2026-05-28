@@ -27,7 +27,7 @@ ALL_DOCS = [
     ("audio_transcript",  "cl_v3_site_b_audio_transcript_2026_04_15.pdf"),
     ("inspection_photos", "cl_v3_inspection_photos_2026_05_02.pdf"),
     ("photo_log",         "cl_v3_site_b_photo_log_2026_04_10.pdf"),
-    ("video_inspection",  "cl_v3_site_b_video_inspection_2026_04_10.pdf"),
+    ("inspection_report", "cl_v3_site_b_video_inspection_2026_04_10.pdf"),
     ("splice_sheet",      "cl_v3_engineering_splice_sheet_2026_04_28.pdf"),
     ("fiber_routing",     "cl_v3_datacenter_fiber_routing_2026_04_28.pdf"),
     ("equipment_spec",    "cl_v3_equipment_spec_sheet_2026_05_03.pdf"),
@@ -96,7 +96,7 @@ all_results = {
     "audio_transcript":  audio_result,
     "inspection_photos": photos_result,
     "photo_log":         photo_log_result,
-    "video_inspection":  video_result,
+    "inspection_report": video_result,
     "splice_sheet":      splice_result,
     "fiber_routing":     routing_result,
     "equipment_spec":    equip_result,
@@ -268,7 +268,7 @@ DIAGNOSIS_CACHED = """DIAGNOSIS: INC-2026-0391
 2. **audio_transcript:** Field confirmation of conduit crack, sleeve displacement, micro-bend, OTDR anomaly at 847m, and recommendation for full conduit replacement.
 3. **inspection_photos:** Photographic evidence of conduit crack, sleeve displacement, pavement heave, and barrier shift; highlights 42 customers at risk.
 4. **photo_log:** GPS-tagged critical findings (Vault TV-3, surface crack, pavement heave), crack progression, and risk summary.
-5. **video_inspection:** Visual confirmation of crack progression (<1cm Jan → 2cm Apr), sleeve displacement, patch separation, and escalation requirement.
+5. **inspection_report:** Visual confirmation of crack progression (<1cm Jan → 2cm Apr), sleeve displacement, patch separation, and escalation requirement.
 6. **splice_sheet:** Engineering analysis of strand losses, confirms conduit as root cause, recommends bypass and replacement.
 7. **fiber_routing:** Routing diagram and redundancy gap analysis; confirms single point of failure and affected customer count.
 8. **equipment_spec:** Materials order and engineering justification; confirms conduit replacement required, strand loss values, and customer exposure.
@@ -408,7 +408,7 @@ DISPATCH_CACHED = """**To:** Team A (Fiber Crew Supervisor), GeoCorp Crew Lead
   - **FRD-2026-04-28:** Fiber routing analysis — confirms single point of failure, 42 customers at risk, no redundancy.
   - **maintenance_log:** Recurring repairs, emergency splices, corridor rehab approval, crew assignment.
   - **audio_transcript:** Field confirmation of crack, sleeve displacement, OTDR anomaly, full replacement recommendation.
-  - **inspection_photos/photo_log/video_inspection:** Visual/GPS evidence of crack progression, sleeve displacement, pavement heave, barrier shift, escalation requirement.
+  - **inspection_photos/photo_log/inspection_report:** Visual/GPS evidence of crack progression, sleeve displacement, pavement heave, barrier shift, escalation requirement.
   - **equipment_spec:** Materials order, engineering justification, vault anchor backorder risk.
   - **plant_diagram:** Data center impact — ODF-A/B fed via affected conduit, racks C05-C08 at risk.
 
@@ -454,7 +454,7 @@ Mobilize Team A and GeoCorp crews for immediate conduit/cable replacement and st
 ---
 
 **References:**
-- FSE-2026-0041, FRD-2026-04-28, maintenance_log, audio_transcript, inspection_photos, photo_log, video_inspection, equipment_spec, plant_diagram, PO-2026-0391, BUD-2026-TR-009
+- FSE-2026-0041, FRD-2026-04-28, maintenance_log, audio_transcript, inspection_photos, photo_log, inspection_report, equipment_spec, plant_diagram, PO-2026-0391, BUD-2026-TR-009
 
 ---
 
