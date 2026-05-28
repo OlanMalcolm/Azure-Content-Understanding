@@ -42,8 +42,7 @@ cu_provider = ContentUnderstandingContextProvider(
     max_wait=None,  # block until extraction completes
 )
 
-# FoundryChatClient uses the Responses API via AIProjectClient,
-# which requires a token credential (AzureKeyCredential is not supported here).
+# FoundryChatClient uses the Responses API via AIProjectClient.
 foundry_client = FoundryChatClient(
     project_endpoint=ENDPOINT,
     model=AGENT_MODEL,
@@ -474,7 +473,7 @@ def _output_tabs(run_text, followup_text):
             children=[
                 dmc.TabsList([
                     dmc.TabsTab("agent.run()", value="run"),
-                    dmc.TabsTab("Follow-up (cached)", value="followup"),
+                    dmc.TabsTab("Follow-up", value="followup"),
                 ]),
                 dmc.TabsPanel(html.Pre(run_text, style=PRE_STYLE),
                               value="run", pt="md"),

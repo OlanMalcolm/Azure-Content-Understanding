@@ -1655,7 +1655,7 @@ fields:
   agent_client.chat.completions.create()  ┘</pre>
         <div class="card-grid">
           <div class="card"><h3>🔌 No Explicit Calls</h3><p>Provider intercepts file attachments</p></div>
-          <div class="card"><h3>📝 Auto Formatting</h3><p>Provider calls to_llm_input() for you</p></div>
+          <div class="card"><h3>📝 Auto Formatting</h3><p>Provider formats results — no to_llm_input() needed</p></div>
           <div class="card"><h3>🔄 Multi-Turn Cache</h3><p>Follow-ups reuse cached analysis</p></div>
         </div>
       </div>
@@ -1681,14 +1681,9 @@ cu_provider = ContentUnderstandingContextProvider(
     analyzer_id="prebuilt-documentSearch",
     max_wait=None,
 )
-
-agent = Agent(
-    client=foundry_client,
-    name="FiberCutResponseAgent",
-    instructions="You are the Fiber Cut Response Agent...",
-    context_providers=[cu_provider],
+foundry_client = FoundryChatClient(
+    project_endpoint=ENDPOINT, model="gpt-4.1", credential=credential,
 )
-session = AgentSession()
 
 <span class="comment"># Build one message: prompt + 9 PDF attachments — CU analyzes each automatically.</span>
 contents = [Content.from_text("Diagnose INC-2026-0391 and draft dispatch.")]
@@ -1698,10 +1693,18 @@ for pdf in all_pdfs:
         additional_properties={"filename": pdf.name},
     ))
 
-response = await agent.run(
-    Message(role="user", contents=contents),
-    session=session,
-)</pre>
+async with cu_provider:
+    agent = Agent(
+        client=foundry_client,
+        name="FiberCutResponseAgent",
+        instructions="You are the Fiber Cut Response Agent...",
+        context_providers=[cu_provider],
+    )
+    session = AgentSession()
+    response = await agent.run(
+        Message(role="user", contents=contents),
+        session=session,
+    )</pre>
           </div>
           <div style="display:flex;flex-direction:column;gap:16px">
             <div class="panel">
@@ -1776,7 +1779,7 @@ RESPONSE:
         <span class="label">Recap</span>
         <h1 class="title">Developer <span class="accent">Takeaways</span></h1>
         <div class="card-grid">
-          <div class="card"><h3>1. Start with prebuilt-documentSearch</h3><p>Tables, figures, barcodes, selection marks, and signatures — no schema required.</p></div>
+          <div class="card"><h3>1. Start with prebuilt-documentSearch</h3><p>Paragraphs, tables, figures, charts &amp; diagrams, hand-written annotations — RAG-optimized markdown, no schema required.</p></div>
           <div class="card"><h3>2. Custom analyzers for decision fields</h3><p>Fields like <code>DispatchUrgency</code> and <code>BudgetVerdict</code> are <em>inferred</em> by Content Understanding, not just extracted.</p></div>
           <div class="card"><h3>3. Classifier for production routing</h3><p>A single call classifies, routes, and extracts. No branching logic in your application code.</p></div>
           <div class="card"><h3>4. <code>to_llm_input()</code> is the SDK bridge</h3><p>Converts any Content Understanding result into YAML + markdown for any LLM. Token-saving options built in.</p></div>
