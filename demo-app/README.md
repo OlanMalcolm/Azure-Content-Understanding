@@ -33,11 +33,11 @@ Slides 0–6 → [Act 1 Live Code] → Slides 7–8 → [Act 2 Live Code]
 Each live code page shows:
 - **Left panel**: Document being analyzed (description + metadata)
 - **Center panel**: Python code with syntax highlighting (tabbed)
-- **Right panel**: Output / extraction results (pre-cached)
+- **Right panel**: Output / extraction results (pre-processed or live)
 
 ## Live Execution
 
-By default, all results are pre-cached for offline use. To run live:
+By default, all results are pre-processed (captured verbatim from the source notebook and embedded in each page). To run live:
 
 1. Create a `.env` file:
    ```
@@ -75,9 +75,7 @@ demo-app/
 │   ├── act4_synthesis.py   # 9-doc synthesis → dispatch email
 │   └── act5_framework.py   # Agent Framework integration
 ├── services/
-│   ├── cu_client.py        # Azure CU wrapper (live execution)
-│   └── cache.py            # Cache loader/saver
-├── cached_results/         # Pre-computed outputs (add JSON files here)
+│   └── cu_client.py        # Azure CU wrapper (live execution)
 └── static/
     └── deck.html           # Modified HTML slide deck (iframe-ready)
 ```

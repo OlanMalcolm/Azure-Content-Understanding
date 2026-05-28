@@ -1,1 +1,1 @@
-"""Services for CU client and caching."""
+"""Services for the Azure Content Understanding client."""
