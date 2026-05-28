@@ -20,15 +20,15 @@ from pages.act5_framework import act5_layout
 # Slide indices map to the HTML deck's internal slide numbers (0-based)
 SEQUENCE = []
 
-# Slides 1–6 (deck indices 0–5)
-for i in range(6):
+# Slides 1–5 (deck indices 0–4)
+for i in range(5):
     SEQUENCE.append(("slide", i))
 
-# Act 1 live code page (after slide 6)
+# Act 1 live code page (before slide 6)
 SEQUENCE.append(("page", "act1"))
 
-# Slides 7–8 (deck indices 6–7)
-for i in range(6, 8):
+# Slides 6–8 (deck indices 5–7)
+for i in range(5, 8):
     SEQUENCE.append(("slide", i))
 
 # Act 2 live code page (after slide 8)
@@ -48,15 +48,15 @@ for i in range(11, 14):
 # Act 4 live code page (after slide 14)
 SEQUENCE.append(("page", "act4"))
 
-# Slides 15–18 (deck indices 14–17) — includes Act 5 intro at slide-label 16
-for i in range(14, 18):
+# Slides 15–17 (deck indices 14–16) — slide 14b, then Act 5 intro at slide-label 16
+for i in range(14, 17):
     SEQUENCE.append(("slide", i))
 
 # Act 5 live code page (after slide-label 16, the Act 5 intro)
 SEQUENCE.append(("page", "act5"))
 
-# Slides 19–22 (deck indices 18–21)
-for i in range(18, 22):
+# Slides 18–21 (deck indices 17–20)
+for i in range(17, 21):
     SEQUENCE.append(("slide", i))
 
 # JSON-serialize the sequence for the client

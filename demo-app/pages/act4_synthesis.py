@@ -90,7 +90,7 @@ Format as a ready-to-send email."""
 # Displayed code — verbatim from notebook cells 42, 43, 44, 45
 # ---------------------------------------------------------------------------
 
-ASSEMBLE_CODE = '''# Notebook cell 42 — assemble all 9 extractions into agent context
+ASSEMBLE_CODE = '''# Assemble all 9 extractions into agent context
 all_results = {
     "maintenance_log":   maintenance_result,
     "audio_transcript":  audio_result,
@@ -121,7 +121,7 @@ print(f"\\n✅ Total context: {total_chars:,} chars (~{total_chars // 4:,} token
 '''
 
 
-DIAGNOSE_CODE = '''# Notebook cell 43 — Step 1: DIAGNOSE
+DIAGNOSE_CODE = '''# Step 1: DIAGNOSE
 DIAGNOSE_SYSTEM = """You are the Fiber Cut Response Agent for Zava Telecom.
 Your role: synthesize document evidence into a root cause diagnosis.
 
@@ -152,7 +152,7 @@ print(diagnosis_text)
 '''
 
 
-IDENTIFY_CODE = '''# Notebook cell 44 — Step 2: IDENTIFY materials, budget, schedule
+IDENTIFY_CODE = '''# Step 2: IDENTIFY materials, budget, schedule
 IDENTIFY_SYSTEM = """You are the Fiber Cut Response Agent for Zava Telecom.
 Your role: build a materials and budget plan from the equipment spec
 extraction and diagnosis.
@@ -184,7 +184,7 @@ print(identify_text)
 '''
 
 
-DISPATCH_CODE = '''# Notebook cell 45 — Step 3: DISPATCH email
+DISPATCH_CODE = '''# Step 3: DISPATCH email
 DISPATCH_SYSTEM = """You are the Fiber Cut Response Agent for Zava Telecom.
 Your role: draft a dispatch email to the repair crew.
 

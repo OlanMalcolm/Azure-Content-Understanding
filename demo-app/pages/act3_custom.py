@@ -29,9 +29,9 @@ DOC_PIPELINE = [
      "photoLogTriageAnalyzer",
      "Photo Log — GPS-indexed field photos with priority ratings",
      "What's the triage assessment? How urgent is dispatch?"),
-    ("cl_v3_site_b_video_inspection_2026_04_10.pdf", "Video_Inspection",
-     "videoInspectionAnalyzer",
-     "Video Inspection Index — 6 segments with damage classification",
+    ("cl_v3_site_b_video_inspection_2026_04_10.pdf", "Inspection_Report",
+     "inspectionReportAnalyzer",
+     "Inspection Report — 6 segments with damage classification",
      "Does video confirm photo evidence? Is damage stable or worsening?"),
     ("cl_v3_engineering_splice_sheet_2026_04_28.pdf", "Splice_Sheet",
      "fiberSpliceExtractor",
@@ -56,44 +56,107 @@ DOC_PIPELINE = [
 # Displayed code — condensed from notebook cells 21, 22, 24, 26
 # ---------------------------------------------------------------------------
 
-ANALYZER_CODE = '''# Notebook cell 21 — define ALL custom analyzers for the 6 remaining documents
+ANALYZER_CODE = '''# Define ALL 6 custom analyzers — mirrors notebook cell 21
 CUSTOM_ANALYZERS = {
     "photoLogTriageAnalyzer": {
-        "description": "Triage field photo logs — extract priority findings and "
-                       "recommend dispatch urgency for the repair agent.",
+        "description": "Triage field photo logs — priority findings + dispatch urgency.",
         "baseAnalyzerId": "prebuilt-document",
-        "scenario": "document",
         "models": {"completion": "gpt-4.1"},
         "fieldSchema": {"fields": {
-            "HighPriorityCount":  {"type": "integer", "method": "generate",
-                "description": "Count of photos/entries marked HIGH priority."},
-            "CriticalFindings":   {"type": "string",  "method": "generate",
-                "description": "Summarize all HIGH-priority findings in one paragraph. "
-                               "Include location (GPS if available), subject, and why critical."},
-            "DispatchUrgency":    {"type": "string",  "method": "generate",
-                "description": "IMMEDIATE (>3 HIGH or safety risk), URGENT (1-3 HIGH), "
-                               "or SCHEDULED (no HIGH). Explain reasoning in one sentence."},
+            "HighPriorityCount": {"type": "integer", "method": "generate",
+                "description": "Count of photos marked HIGH priority."},
+            "CriticalFindings":  {"type": "string",  "method": "generate",
+                "description": "Summarize HIGH-priority findings with locations."},
+            "DispatchUrgency":   {"type": "string",  "method": "generate",
+                "description": "IMMEDIATE (>3 HIGH) / URGENT (1-3 HIGH) / SCHEDULED."},
         }},
     },
-    "videoInspectionAnalyzer":     {"fields": ["CriticalSegments", "EscalationRequired",
-                                               "DamageProgression"]},
-    "fiberSpliceExtractor":        {"fields": ["CableType", "StrandCount", "FailedStrands",
-                                               "FailureMode", "MaxLoss",
-                                               "EngineeringRecommendation"]},
-    "fiberRoutingAnalyzer":        {"fields": ["RedundancyGap", "AffectedCustomers",
-                                               "SinglePointOfFailure", "RerouteOption"]},
-    "equipmentProcurementAnalyzer":{"fields": ["TotalCost", "BackorderRisk",
-                                               "CriticalPathDays", "BudgetVerdict"]},
-    "plantDiagramAnalyzer":        {"fields": ["FiberEntryPoint", "ThermalRisk",
-                                               "AffectedZone", "FieldNotes"]},
+    "inspectionReportAnalyzer": {
+        "description": "Extract critical segments and escalation needs from inspection report indices.",
+        "baseAnalyzerId": "prebuilt-document",
+        "models": {"completion": "gpt-4.1"},
+        "fieldSchema": {"fields": {
+            "CriticalSegments":   {"type": "string", "method": "generate",
+                "description": "Segments marked CRITICAL with timestamps and content."},
+            "EscalationRequired": {"type": "string", "method": "generate",
+                "description": "YES / NO with one-sentence reasoning."},
+            "DamageProgression":  {"type": "string", "method": "generate",
+                "description": "Stable / worsening / deteriorating with evidence."},
+        }},
+    },
+    "fiberSpliceExtractor": {
+        "description": "Extract strand-level OTDR loss data and failure modes from splice sheets.",
+        "baseAnalyzerId": "prebuilt-document",
+        "models": {"completion": "gpt-4.1"},
+        "fieldSchema": {"fields": {
+            "CableType":                 {"type": "string",  "method": "generate",
+                "description": "Cable type/standard (e.g. 'G.652D Single-Mode')."},
+            "StrandCount":               {"type": "integer", "method": "generate",
+                "description": "Total fiber strands tested."},
+            "FailedStrands":             {"type": "string",  "method": "generate",
+                "description": "MARGINAL/FAIL strands with ID, color, loss, status."},
+            "FailureMode":               {"type": "string",  "method": "generate",
+                "description": "Root cause from engineering notes."},
+            "MaxLoss":                   {"type": "number",  "method": "generate",
+                "description": "Highest loss value (dB/km) among all strands."},
+            "EngineeringRecommendation": {"type": "string",  "method": "generate",
+                "description": "Re-splice / conduit replacement / other."},
+        }},
+    },
+    "fiberRoutingAnalyzer": {
+        "description": "Identify redundancy gaps and single points of failure in fiber routes.",
+        "baseAnalyzerId": "prebuilt-document",
+        "models": {"completion": "gpt-4.1"},
+        "fieldSchema": {"fields": {
+            "RedundancyGap":        {"type": "string",  "method": "generate",
+                "description": "Where primary + backup share infrastructure."},
+            "AffectedCustomers":    {"type": "integer", "method": "generate",
+                "description": "Customers at risk from the single point of failure."},
+            "SinglePointOfFailure": {"type": "string",  "method": "generate",
+                "description": "Element that takes down both paths if it fails."},
+            "RerouteOption":        {"type": "string",  "method": "generate",
+                "description": "Alternative route or 'No alternative'."},
+        }},
+    },
+    "equipmentProcurementAnalyzer": {
+        "description": "Extract procurement-critical data — costs, lead times, budget verdict.",
+        "baseAnalyzerId": "prebuilt-document",
+        "models": {"completion": "gpt-4.1"},
+        "fieldSchema": {"fields": {
+            "TotalCost":        {"type": "number",  "method": "generate",
+                "description": "Sum of line item totals (no currency symbol)."},
+            "BackorderRisk":    {"type": "string",  "method": "generate",
+                "description": "Items backordered or with >5 day lead time."},
+            "CriticalPathDays": {"type": "integer", "method": "generate",
+                "description": "Longest lead time — determines earliest start date."},
+            "BudgetVerdict":    {"type": "string",  "method": "generate",
+                "description": "WITHIN / OVER BUDGET ($X of $Y)."},
+        }},
+    },
+    "plantDiagramAnalyzer": {
+        "description": "Identify affected zones, thermal risks, and fiber connectivity in plant diagrams.",
+        "baseAnalyzerId": "prebuilt-document",
+        "models": {"completion": "gpt-4.1"},
+        "fieldSchema": {"fields": {
+            "FiberEntryPoint": {"type": "string", "method": "generate",
+                "description": "Where external fiber enters (ODF, MDF, demarc)."},
+            "ThermalRisk":     {"type": "string", "method": "generate",
+                "description": "Cooling concerns or 'No thermal issues noted'."},
+            "AffectedZone":    {"type": "string", "method": "generate",
+                "description": "Racks/rows/zones affected by the fiber issue."},
+            "FieldNotes":      {"type": "string", "method": "generate",
+                "description": "Handwritten notes, annotations, approval stamps."},
+        }},
+    },
 }
 
-# Notebook cell 22 — deploy each analyzer
+# Deploy each analyzer with the SDK — mirrors notebook cell 22
 from azure.ai.contentunderstanding.models import (
     ContentAnalyzer, ContentFieldSchema, ContentFieldDefinition,
     ContentFieldType, GenerationMethod,
 )
-_TYPE_MAP = {"string": ContentFieldType.STRING,
+
+_TYPE_MAP = {"string":  ContentFieldType.STRING,
              "integer": ContentFieldType.INTEGER,
              "number":  ContentFieldType.NUMBER}
 
@@ -106,75 +169,82 @@ for analyzer_id, schema in CUSTOM_ANALYZERS.items():
         )
         for name, fdef in schema["fieldSchema"]["fields"].items()
     }
-    poller = client.begin_create_analyzer(
-        analyzer_id=analyzer_id,
-        resource=ContentAnalyzer(
-            base_analyzer_id=schema["baseAnalyzerId"],
-            description=schema["description"],
-            field_schema=ContentFieldSchema(fields=fields),
-            models=schema["models"],
-        ),
-        allow_replace=True,
+    analyzer = ContentAnalyzer(
+        base_analyzer_id=schema["baseAnalyzerId"],
+        description=schema["description"],
+        field_schema=ContentFieldSchema(fields=fields),
+        models=schema["models"],
     )
-    poller.result()
-    print(f"  {analyzer_id}: ✅ ready")
+    client.begin_create_analyzer(
+        analyzer_id=analyzer_id, resource=analyzer, allow_replace=True
+    ).result()
+    print(f"  {analyzer_id:<32} ✅ ready")
 '''
 
-CLASSIFIER_CODE = '''# Notebook cell 24 — deploy the classifier that auto-routes to custom analyzers
+CLASSIFIER_CODE = '''# Deploy the classifier that auto-routes to custom analyzers — mirrors notebook cell 24
 from azure.ai.contentunderstanding.models import (
     ContentAnalyzer, ContentAnalyzerConfig, ContentCategoryDefinition,
 )
+
 CLASSIFIER_ID = "fiberFieldDocClassifier"
 
+# Each category description guides routing; analyzer_id points to a deployed analyzer.
 categories = {
-    "Photo_Log":        ContentCategoryDefinition(
-        description="GPS-indexed photo logs from field inspections with priority "
-                    "ratings (HIGH/MEDIUM/LOW) for each photo entry.",
-        analyzer_id="photoLogTriageAnalyzer"),
-    "Video_Inspection": ContentCategoryDefinition(
-        description="Video inspection index documents listing numbered video segments "
-                    "with timestamps, locations, damage classifications.",
-        analyzer_id="videoInspectionAnalyzer"),
-    "Splice_Sheet":     ContentCategoryDefinition(
-        description="Engineering fiber splice sheets with strand-level OTDR loss "
-                    "measurements, color codes, pass/fail status.",
-        analyzer_id="fiberSpliceExtractor"),
-    "Fiber_Routing":    ContentCategoryDefinition(
-        description="Network fiber routing diagrams showing primary and backup paths.",
-        analyzer_id="fiberRoutingAnalyzer"),
-    "Equipment_Spec":   ContentCategoryDefinition(
-        description="Equipment specification and materials order documents with "
-                    "part numbers, quantities, costs, lead times.",
-        analyzer_id="equipmentProcurementAnalyzer"),
-    "Plant_Diagram":    ContentCategoryDefinition(
-        description="Data center or facility plant diagrams showing rack layouts, "
-                    "fiber paths, cooling systems.",
-        analyzer_id="plantDiagramAnalyzer"),
+    "Photo_Log": ContentCategoryDefinition(
+        description="GPS-indexed photo logs with HIGH/MEDIUM/LOW priority ratings.",
+        analyzer_id="photoLogTriageAnalyzer",
+    ),
+    "Inspection_Report": ContentCategoryDefinition(
+        description="Inspection report indices with numbered segments and timestamps.",
+        analyzer_id="inspectionReportAnalyzer",
+    ),
+    "Splice_Sheet": ContentCategoryDefinition(
+        description="Engineering splice sheets with strand-level OTDR loss data.",
+        analyzer_id="fiberSpliceExtractor",
+    ),
+    "Fiber_Routing": ContentCategoryDefinition(
+        description="Network fiber routing diagrams (primary + backup paths).",
+        analyzer_id="fiberRoutingAnalyzer",
+    ),
+    "Equipment_Spec": ContentCategoryDefinition(
+        description="Equipment specs / materials orders with costs and lead times.",
+        analyzer_id="equipmentProcurementAnalyzer",
+    ),
+    "Plant_Diagram": ContentCategoryDefinition(
+        description="Data-center plant diagrams (racks, fiber paths, cooling).",
+        analyzer_id="plantDiagramAnalyzer",
+    ),
 }
 
 classifier = ContentAnalyzer(
     base_analyzer_id="prebuilt-document",
-    description="Routes field service documents to the correct custom analyzer",
-    config=ContentAnalyzerConfig(return_details=True, enable_segment=False,
-                                 content_categories=categories),
+    description="Classifies field service documents and routes to the correct custom analyzer",
+    config=ContentAnalyzerConfig(
+        return_details=True,
+        enable_segment=False,
+        content_categories=categories,
+    ),
     models={"completion": "gpt-4.1"},
 )
-client.begin_create_analyzer(analyzer_id=CLASSIFIER_ID,
-                             resource=classifier,
-                             allow_replace=True).result()
+client.begin_create_analyzer(
+    analyzer_id=CLASSIFIER_ID, resource=classifier, allow_replace=True
+).result()
 
-# Notebook cell 26 — single call: classify + route + extract
-for filename, expected in test_docs:
-    with open(DOCS_DIR / filename, "rb") as f:
-        r = client.begin_analyze_binary(analyzer_id=CLASSIFIER_ID,
-                                        binary_input=f.read()).result()
-    dc = r.contents[0]
-    category = dc.segments[0].category if dc.segments else "(unknown)"
-    print(f"{filename:<50} {category:<20} "
-          f"{'✅' if category == expected else '❌'}")
-    if dc.fields:
-        for fname, fval in dc.fields.items():
-            print(f"     {fname}: {fval.value or fval.value_string}")
+# Classify + extract in a single call — mirrors notebook cell 25
+from typing import cast
+from azure.ai.contentunderstanding.models import DocumentContent
+
+with open(test_doc, "rb") as f:
+    result = client.begin_analyze_binary(
+        analyzer_id=CLASSIFIER_ID, binary_input=f.read()
+    ).result()
+
+doc = cast(DocumentContent, result.contents[0])
+category = doc.segments[0].category if doc.segments else "(unknown)"
+print(f"Category: {category}")
+for name, fval in (doc.fields or {}).items():
+    v = fval.value if fval.value is not None else fval.value_string
+    print(f"  {name}: {v}")
 '''
 
 
@@ -185,7 +255,7 @@ for filename, expected in test_docs:
 CLASSIFICATION_CACHED = """Document                                           Classified As        Correct?
 -------------------------------------------------- -------------------- --------
 cl_v3_site_b_photo_log_2026_04_10.pdf              Photo_Log            ✅
-cl_v3_site_b_video_inspection_2026_04_10.pdf       Video_Inspection     ✅
+cl_v3_site_b_video_inspection_2026_04_10.pdf       Inspection_Report    ✅
 cl_v3_engineering_splice_sheet_2026_04_28.pdf      Splice_Sheet         ✅
 cl_v3_datacenter_fiber_routing_2026_04_28.pdf      Fiber_Routing        ✅
 cl_v3_equipment_spec_sheet_2026_05_03.pdf          Equipment_Spec       ✅
@@ -206,7 +276,7 @@ AGENT [1/6]:
 Conclusion: Dispatch should be prioritized urgently for Segment 9, but immediate mobilization is not mandated based on current triage.
 
 
-━━━ Video_Inspection → videoInspectionAnalyzer ━━━━━━━━━━━━━━━━━━━━
+━━━ Inspection_Report → inspectionReportAnalyzer ━━━━━━━━━━━━━━━━━━
   CriticalSegments: VID-05 (52:30-78:00): Vault TV-3 -- CRITICAL (recurring); VID-06 (78:00-95:00): Section 5 -- heave (shared conduit)
   EscalationRequired: YES. Escalation to engineering is required due to the recurring and worsening crack in Vault TV-3 and pavement heave in Section 5, both of which threaten service continuity.
   DamageProgression: The damage is worsening, as evidenced by the Vault TV-3 conduit crack increasing from less than 1cm in January to 2cm in April, patch separation, and new ground movement and pavement heave observed.
@@ -410,7 +480,7 @@ def act3_layout():
                     html.Div("\U0001F4C1 6 Field Documents", className="demo-panel-header"),
                     dmc.Stack([
                         _doc_card("Photo Log", "GPS-indexed field photos with priority ratings", "teal"),
-                        _doc_card("Video Inspection", "6 segments with damage classification", "blue"),
+                        _doc_card("Inspection Report", "6 segments with damage classification", "blue"),
                         _doc_card("Splice Sheet", "Strand-level OTDR loss measurements", "violet"),
                         _doc_card("Fiber Routing", "Primary & backup path topology", "orange"),
                         _doc_card("Equipment Spec", "Procurement data & budget", "green"),
@@ -448,6 +518,13 @@ def _run_live_extractions():
     client = get_cu_client()
     if client is None:
         return ("\u26A0\uFE0F CU client not configured", "\u26A0\uFE0F CU client not configured")
+
+    try:
+        from scripts.deploy_analyzers import ensure_deployed
+        ensure_deployed(client)
+    except Exception as exc:
+        warn = f"\u26A0\uFE0F Could not deploy custom analyzers: {exc}"
+        return (warn, warn)
 
     classify_lines = [
         f"{'Document':<50} {'Classified As':<20} {'Correct?'}",

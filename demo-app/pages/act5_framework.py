@@ -25,7 +25,7 @@ DOCS_DIR = Path(__file__).parent.parent.parent / "src" / "sample-data" / "docume
 # Displayed code — verbatim from notebook cells 52, 53, 54
 # ---------------------------------------------------------------------------
 
-SETUP_CODE = '''# Notebook cell 52 — Agent Framework setup
+SETUP_CODE = '''# Agent Framework setup
 import asyncio
 from agent_framework import Agent, AgentSession, Content, Message
 from agent_framework.foundry import (
@@ -57,7 +57,7 @@ print(f"   Model: {AGENT_MODEL}")
 '''
 
 
-RUN_CODE = '''# Notebook cell 53 — ONE call: 9 PDFs → diagnosis + dispatch
+RUN_CODE = '''# ONE call: 9 PDFs → diagnosis + dispatch
 all_pdfs = sorted(DOCS_DIR.glob("cl_v3_*.pdf"))   # 9 documents
 
 async def run_agent_framework_demo():
@@ -106,7 +106,7 @@ session, agent = await run_agent_framework_demo()
 '''
 
 
-FOLLOWUP_CODE = '''# Notebook cell 54 — multi-turn follow-up uses cached CU results
+FOLLOWUP_CODE = '''# Multi-turn follow-up uses cached CU results
 async def run_followup():
     async with cu_provider:
         agent = Agent(

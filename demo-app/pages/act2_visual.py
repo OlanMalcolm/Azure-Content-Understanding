@@ -26,8 +26,7 @@ PHOTOS_PDF = DOCS_DIR / "cl_v3_inspection_photos_2026_05_02.pdf"
 # Displayed code — literally from notebook cells 16 (audio) and 19 (photos)
 # ---------------------------------------------------------------------------
 
-AUDIO_CODE = '''# Notebook cell 16 — audio transcript with CU
-display(Markdown("### CU Extraction: Conversational Content"))
+AUDIO_CODE = '''# Audio transcript with CU
 audio_result = analyze_document(audio_transcript)
 show_extraction_summary(audio_result)
 
@@ -44,8 +43,7 @@ print("AGENT REASONING:")
 print(reasoning)
 '''
 
-PHOTOS_CODE = '''# Notebook cell 19 — inspection photos with AI figure captions
-display(Markdown("### CU Extraction: Figures with AI-Generated Captions"))
+PHOTOS_CODE = '''# Inspection photos with AI figure captions
 photos_result = analyze_document(photos)
 show_extraction_summary(photos_result)
 

@@ -46,6 +46,14 @@ By default, all results are pre-cached for offline use. To run live:
    ```
 2. Click the **"▶ Run Live"** button on any page
 
+> **Act 3 only:** the classifier and 6 custom analyzers must exist on the configured endpoint. Run the one-shot deploy script once after pointing `.env` at a new endpoint:
+>
+> ```powershell
+> .\.venv\Scripts\python.exe scripts\deploy_analyzers.py
+> ```
+>
+> Re-running is safe (every analyzer is created with `allow_replace=True`).
+
 ## File Structure
 
 ```
@@ -78,5 +86,5 @@ demo-app/
 
 - **Python 3.12+** (managed with `uv`)
 - **Dash 4.x** + **dash-mantine-components**
-- **Azure AI Content Understanding SDK** (optional, for live execution)
+- **Azure Content Understanding SDK** (optional, for live execution)
 - The HTML slide deck runs in an iframe with postMessage communication
