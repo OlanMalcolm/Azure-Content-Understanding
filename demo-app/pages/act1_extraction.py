@@ -253,16 +253,6 @@ Total raw text: 2,930 chars
 
 CU_CACHED = """**CU extracted:** **2 table(s)** • **158 paragraphs** • **1 barcode/QR** • **2☒ 1☐ selection marks**
 
-LOCAL PyMuPDF                       │ CONTENT UNDERSTANDING
-────────────────────────────────────┼────────────────────────────────────
-Flat text stream                    │ Markdown with | table | syntax
-No column alignment                 │ Columns preserved in pipe format
-Selection marks lost or garbled     │ ☑ and ☐ rendered correctly
-No heading hierarchy                │ # H1, ## H2 structure intact
-Cross-page tables split             │ Tables merged across pages
-Images = nothing                    │ Figures with AI-generated captions
-QR codes = invisible                │ Decoded barcode/QR values
-
 CU structural elements extracted from this single PDF:
    2 tables (with row/column structure)
    0 figures (with AI captions)
@@ -492,16 +482,6 @@ def _run_cu_live():
 
     lines: list[str] = []
     lines.append(extraction_summary(result))
-    lines.append("")
-    lines.append(f"{'LOCAL PyMuPDF':<35} │ {'CONTENT UNDERSTANDING'}")
-    lines.append(f"{'─' * 35}─┼─{'─' * 35}")
-    lines.append(f"{'Flat text stream':<35} │ {'Markdown with | table | syntax'}")
-    lines.append(f"{'No column alignment':<35} │ {'Columns preserved in pipe format'}")
-    lines.append(f"{'Selection marks lost or garbled':<35} │ {'☑ and ☐ rendered correctly'}")
-    lines.append(f"{'No heading hierarchy':<35} │ {'# H1, ## H2 structure intact'}")
-    lines.append(f"{'Cross-page tables split':<35} │ {'Tables merged across pages'}")
-    lines.append(f"{'Images = nothing':<35} │ {'Figures with AI-generated captions'}")
-    lines.append(f"{'QR codes = invisible':<35} │ {'Decoded barcode/QR values'}")
     lines.append("")
 
     table_count = len(content.tables) if content.tables else 0
