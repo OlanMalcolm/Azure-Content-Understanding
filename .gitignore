@@ -27,3 +27,6 @@ node_modules/
 __pycache__/
 *.pyc
 .venv/
+
+# Presentation source (Next.js deck) — built output is embedded in demo-app/static/
+presentation/

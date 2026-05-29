@@ -1,36 +1,3 @@
-# 🚀 Get Started
-
-**This repo is where attendees go to continue their learning after your session — and your Copilot agent will help you set it up.**
-
-### Step 1: Open your repo
-
-Open this repo in a **Codespace** (click the green **Code** button → **Create a Codespace**) — or clone it locally. Then open **GitHub Copilot Chat**.
-
-### Step 2: Add your content
-
-Give the agent something to work with. Drag files into the Explorer panel — session abstracts, outlines, screenshots, notes — and drop them in one of two places:
-
-| Where to put it | What goes there | Who sees it |
-|---|---|---|
-| **`_remove-before-publish/`** | Internal reference materials (abstracts, outlines, screenshots, planning docs) | **Copilot only** — never published |
-| **`/docs/`, `/src/`, or repo root** | Lab instructions, demo code, sample data, getting-started guides | **Attendees** — published with the repo |
-
-> 💡 Not sure? Start by dropping your session abstract or outline into `_remove-before-publish/`. The agent will figure out what to do with it.
-
-### Step 3: Ask the Agent
-
-Once your content is in the repo, use these three phrases with Copilot to build out your session repo:
-
-| Phrase to use with Copilot | What it does | When to run it |
-|---|---|---|
-| **"Help me get started"** | Sets up session title, description, outcomes, and owners | After you've added your session abstract or outline to the repo |
-| **"Help me refine content"** | Organizes your session content into the repo | Each time you add or update content |
-| **"Help me finalize"** | Final review, cleanup, and publication prep | When you're ready to publish |
-
-> 💡 **These three phrases are just the starting point.** Copilot can do much more — try asking it to brainstorm next steps for attendees, generate code samples, or build out your repo structure. Don't be afraid to put it in plan mode and ask for what you need.
-
----
-
 <a name="start-building"></a>
 <br>
 <p align="center">
@@ -45,9 +12,43 @@ Once your content is in the repo, use these three phrases with Copilot to build 
 
 Building high-quality agentic applications requires well-structured data — but real-world data is often multi-modal, unorganized, and error-prone. In this demo, a **Fiber Cut Response Agent** triages a critical network incident end-to-end: complex field documents (PDFs with tables, photos, engineering diagrams, splice sheets, and audio transcripts) are processed by **Azure Content Understanding** using prebuilt and custom analyzers, then reasoned over by an LLM (Foundry model) to produce a root cause diagnosis, materials plan, and crew dispatch email. The demo also shows how the **Microsoft Agent Framework** wraps Content Understanding into a reusable context provider for multi-turn agent conversations with automatic analysis and caching.
 
+<p align="center">
+  <img src="img/demo-app-title.png" alt="Session title slide — Fiber Cut Incident Response with Azure Content Understanding + Agents" width="900"/>
+</p>
+
+### What's in this repo
+
+| Folder | Purpose |
+|---|---|
+| [`src/`](src/) | The **source notebook** — `demo_fiber_cut_MAF.ipynb` walks through all five acts end-to-end. Best place to start. |
+| [`demo-app/`](demo-app/) | A **Dash presentation app** that combines the HTML slide deck with interactive "live code" pages for each act. This is what's used on stage. |
+| [`src/sample-data/documents/`](src/sample-data/documents/) | The 9 field documents (PDFs) used throughout the demo. |
+
+### The Demo at a Glance
+
+The five acts of the demo, end-to-end:
+
+<p align="center">
+  <img src="img/demo-app-five-acts.png" alt="Five Acts overview — Assess, Verify, Extract, Diagnose, Integrate" width="900"/>
+</p>
+
+The architecture: nine multi-modal documents flow through Content Understanding's classify-route-extract pipeline, into structured agent context, and out as a dispatched repair crew.
+
+<p align="center">
+  <img src="img/demo-app-architecture.png" alt="Architecture — 9 documents through Content Understanding into the Fiber Cut Response Agent" width="900"/>
+</p>
+
+The interactive demo app shows the source document, the code, and the output side-by-side — toggle between pre-processed and live execution.
+
+<p align="center">
+  <img src="img/demo-app-act1-live.png" alt="Act 1 live code page — head-to-head comparison of PyMuPDF vs Azure Content Understanding" width="900"/>
+</p>
+
 ### 🚀 Getting started
 
 If you're following these steps at your own pace:
+
+**Option A — Run the source notebook** (recommended for learning)
 
 1. Clone this repository
 2. Install Python dependencies:
@@ -56,10 +57,19 @@ If you're following these steps at your own pace:
    ```
 3. Create a `.env` file in the `src/` folder with your Azure Content Understanding endpoint and key:
    ```
-   CONTENTUNDERSTANDING_ENDPOINT=https://<your-resource>.cognitiveservices.azure.com/
+   CONTENTUNDERSTANDING_ENDPOINT=https://<your-resource>.services.ai.azure.com/
    CONTENTUNDERSTANDING_KEY=<your-key>   # or omit to use DefaultAzureCredential
    ```
-4. Open `src/demo_fiber_cut_MAF.ipynb` and run cells sequentially
+4. Open [`src/demo_fiber_cut_MAF.ipynb`](src/demo_fiber_cut_MAF.ipynb) and run cells sequentially
+
+**Option B — Run the interactive demo app** (the on-stage experience)
+
+```bash
+cd demo-app
+uv run python app.py
+```
+
+Then open <http://localhost:8050> and press **F11** for fullscreen. See [`demo-app/README.md`](demo-app/README.md) for details on the 27-frame sequence, live execution mode, and the one-time analyzer deploy script.
 
 ### 🧠 Learning Outcomes
 
@@ -98,7 +108,7 @@ Help me create a Python script that uses azure-ai-contentunderstanding to analyz
 ### 💻 Technologies Used
 
 1. [Azure Content Understanding](https://learn.microsoft.com/azure/ai-services/content-understanding/overview)
-1. [Microsoft Agent Framework](https://learn.microsoft.com/azure/ai-services/agents/overview)
+1. [Microsoft Agent Framework](https://learn.microsoft.com/agent-framework/)
 1. [Azure OpenAI Service](https://learn.microsoft.com/azure/ai-services/openai/overview)
 1. [Azure AI Foundry](https://learn.microsoft.com/azure/foundry/what-is-foundry)
 1. [Python SDK: azure-ai-contentunderstanding](https://pypi.org/project/azure-ai-contentunderstanding/)
@@ -119,10 +129,6 @@ Help me create a Python script that uses azure-ai-contentunderstanding to analyz
         <img src="https://avatars.githubusercontent.com/u/85763820?v=4" width="100px;" alt="Chu Lahlou"/><br />
         <sub><b>Chu Lahlou</b></sub></a>
     </td>
-    <td align="center"><a href="https://github.com/jfilcik">
-        <img src="https://avatars.githubusercontent.com/u/11428131?v=4" width="100px;" alt="Joe Filcik"/><br />
-        <sub><b>Joe Filcik</b></sub></a>
-    </td>
 </tr>
 </table>
 
@@ -142,22 +148,6 @@ The Microsoft Learn MCP Server gives your AI agent direct access to Microsoft's 
 ```
 
 For more info, other clients, and to post questions, visit the [Learn MCP Server repo](https://aka.ms/learnmcp).
-
-## Content Owners
-
-<!-- TODO: Add yourself as a content owner
-1. Change the src in the image tag to {your github url}.png
-2. Change INSERT NAME HERE to your name
-3. Change the github url in the final href to your url. -->
-
-<table>
-<tr>
-    <td align="center"><a href="http://github.com/yourGitHubHandle">
-        <img src="https://github.com/yourGitHubHandle.png" width="100px;" alt="INSERT NAME HERE"/><br />
-        <sub><b>INSERT NAME HERE</b></sub></a><br />
-            <a href="https://github.com/yourGitHubHandle" title="talk">📢</a>
-    </td>
-</tr></table>
 
 ## Contributing
 
