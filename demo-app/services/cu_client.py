@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 # Always honor .env values over any inherited shell env vars (the notebook does this).
 load_dotenv(override=True)
 
-AGENT_MODEL = "gpt-4.1"
+AGENT_MODEL = "gpt-5.2"
 DEFAULT_ANALYZER = "prebuilt-documentSearch"
 CLASSIFIER_ID = "fiberFieldDocClassifier"
 
@@ -108,7 +108,7 @@ def extraction_summary(result) -> str:
 def agent_reason(extraction_text: str, doc_description: str, question: str) -> str:
     """Send a CU extraction to the agent and return reasoning text.
 
-    Mirrors notebook cell 5 `agent_reason` exactly (same prompt, temperature, max_tokens).
+    Mirrors notebook cell 5 `agent_reason` exactly (same prompt, temperature, max_completion_tokens).
     """
     client = get_agent_client()
     if not client:
@@ -130,6 +130,6 @@ def agent_reason(extraction_text: str, doc_description: str, question: str) -> s
             )},
         ],
         temperature=0.2,
-        max_tokens=400,
+        max_completion_tokens=400,
     )
     return response.choices[0].message.content

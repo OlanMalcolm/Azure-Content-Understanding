@@ -145,7 +145,7 @@ diagnose_response = agent_client.chat.completions.create(
             f"Incident: INC-2026-0391\\n\\nDocument evidence:\\n\\n{FULL_CONTEXT}"},
     ],
     temperature=0.2,
-    max_tokens=2000,
+    max_completion_tokens=2000,
 )
 diagnosis_text = diagnose_response.choices[0].message.content
 print(diagnosis_text)
@@ -177,7 +177,7 @@ identify_response = agent_client.chat.completions.create(
             f"Full document evidence:\\n\\n{FULL_CONTEXT}"},
     ],
     temperature=0.2,
-    max_tokens=2000,
+    max_completion_tokens=2000,
 )
 identify_text = identify_response.choices[0].message.content
 print(identify_text)
@@ -212,7 +212,7 @@ dispatch_response = agent_client.chat.completions.create(
         )},
     ],
     temperature=0.3,
-    max_tokens=2000,
+    max_completion_tokens=2000,
 )
 dispatch_text = dispatch_response.choices[0].message.content
 print(dispatch_text)
@@ -771,7 +771,7 @@ def _run_live():
                     f"Incident: INC-2026-0391\n\nDocument evidence:\n\n{FULL_CONTEXT}"},
             ],
             temperature=0.2,
-            max_tokens=2000,
+            max_completion_tokens=2000,
         )
         diagnosis_text = diag.choices[0].message.content
     except Exception as e:
@@ -789,7 +789,7 @@ def _run_live():
                     f"Full document evidence:\n\n{FULL_CONTEXT}"},
             ],
             temperature=0.2,
-            max_tokens=2000,
+            max_completion_tokens=2000,
         )
         identify_text = ident.choices[0].message.content
     except Exception as e:
@@ -809,7 +809,7 @@ def _run_live():
                 )},
             ],
             temperature=0.3,
-            max_tokens=2000,
+            max_completion_tokens=2000,
         )
         dispatch_text = disp.choices[0].message.content
     except Exception as e:

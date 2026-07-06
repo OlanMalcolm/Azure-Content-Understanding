@@ -1039,7 +1039,7 @@
             </div>
             <div class="arrow">─────▶</div>
             <div class="flow-box green">
-              <h3 class="green">Agent (GPT-4.1)</h3>
+              <h3 class="green">Agent (GPT-5.2)</h3>
               <ul>
                 <li><strong class="green">DIAGNOSE</strong></li>
                 <li><strong class="green">IDENTIFY</strong></li>
@@ -1319,7 +1319,7 @@ client.begin_create_analyzer(
     resource=ContentAnalyzer(
         base_analyzer_id="prebuilt-document",
         field_schema=ContentFieldSchema(fields=photo_log_fields),
-        models={"completion": "gpt-4.1"},
+        models={"completion": "gpt-5.2"},
     ),
     allow_replace=True,
 ).result()</pre>
@@ -1389,7 +1389,7 @@ client.begin_create_analyzer(
         base_analyzer_id="prebuilt-document",
         config=ContentAnalyzerConfig(content_categories=categories,
                                      return_details=True, enable_segment=False),
-        models={"completion": "gpt-4.1"},
+        models={"completion": "gpt-5.2"},
     ),
     allow_replace=True,
 ).result()
@@ -1582,7 +1582,7 @@ for name, result in all_results.items():
     agent_context_parts.append(f"=== Document: {name} ===\n{text}")
 
 response = agent_client.chat.completions.create(
-    model="gpt-4.1",
+    model="gpt-5.2",
     messages=[
         {"role": "system", "content": DIAGNOSE_SYSTEM},
         {"role": "user", "content": "\n".join(agent_context_parts)},
@@ -1682,7 +1682,7 @@ cu_provider = ContentUnderstandingContextProvider(
     max_wait=None,
 )
 foundry_client = FoundryChatClient(
-    project_endpoint=ENDPOINT, model="gpt-4.1", credential=credential,
+    project_endpoint=ENDPOINT, model="gpt-5.2", credential=credential,
 )
 
 <span class="comment"># Build one message: prompt + 9 PDF attachments — CU analyzes each automatically.</span>
@@ -1712,7 +1712,7 @@ async with cu_provider:
               <pre class="output-panel" style="padding:0;border:none;background:transparent;box-shadow:none">✅ ContentUnderstandingContextProvider configured
    Endpoint: &lt;your-foundry-endpoint&gt;
    Analyzer: prebuilt-documentSearch
-   Model: gpt-4.1
+   Model: gpt-5.2
 
    The provider now handles:
    • Content Understanding analysis when files are attached
