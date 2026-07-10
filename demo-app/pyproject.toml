@@ -11,10 +11,16 @@ dependencies = [
     "dash>=4.3.0rc0",
     "dash-iconify>=0.1.2",
     "dash-mantine-components>=2.7.0",
+    "img2pdf>=0.6.3",
+    "ipykernel>=6.29.0",
+    "jupyter>=1.1.1",
+    "notebook>=7.4.0",
     "openai>=2.38.0",
     "pillow>=12.2.0",
     "pymupdf>=1.27.2.3",
     "python-dotenv>=1.2.2",
+    "reportlab>=4.4.0",
+    "requests>=2.31.0",
 ]
 
 [project.scripts]

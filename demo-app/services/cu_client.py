@@ -15,7 +15,11 @@ from dotenv import load_dotenv
 # Always honor .env values over any inherited shell env vars (the notebook does this).
 load_dotenv(override=True)
 
-AGENT_MODEL = "gpt-5.2"
+CU_API_VERSION = "2025-11-01"
+CU_COMPLETION_ALIAS = "prebuilt-analyzer-completion"
+CU_COMPLETION_MINI_ALIAS = "prebuilt-analyzer-completion-mini"
+CU_EMBEDDING_ALIAS = "prebuilt-analyzer-embedding"
+AGENT_MODEL = os.getenv("AGENT_MODEL", "gpt-5.2")
 DEFAULT_ANALYZER = "prebuilt-documentSearch"
 CLASSIFIER_ID = "fiberFieldDocClassifier"
 
@@ -31,6 +35,55 @@ def _key() -> Optional[str]:
 def is_configured() -> bool:
     """True if a CU endpoint is configured."""
     return bool(_endpoint())
+
+
+def model_deployments() -> dict[str, str]:
+    """Return CU model aliases mapped to the deployment names on the endpoint."""
+    completion_model = os.getenv("CONTENTUNDERSTANDING_COMPLETION_MODEL", "gpt-5.2")
+    completion_deployment = os.getenv(
+        "CONTENTUNDERSTANDING_COMPLETION_DEPLOYMENT", completion_model
+    )
+    embedding_deployment = os.getenv(
+        "CONTENTUNDERSTANDING_EMBEDDING_DEPLOYMENT", "text-embedding-3-large"
+    )
+    return {
+        completion_model: completion_deployment,
+        CU_COMPLETION_ALIAS: completion_deployment,
+        CU_COMPLETION_MINI_ALIAS: completion_deployment,
+        "text-embedding-3-large": embedding_deployment,
+        CU_EMBEDDING_ALIAS: embedding_deployment,
+    }
+
+
+def configure_model_defaults() -> dict:
+    """Configure the resource-level CU model defaults and return the response."""
+    endpoint = _endpoint()
+    if not endpoint:
+        raise RuntimeError("CONTENTUNDERSTANDING_ENDPOINT is not configured")
+
+    import requests
+
+    headers = {"Content-Type": "application/json"}
+    key = _key()
+    if key:
+        headers["Ocp-Apim-Subscription-Key"] = key
+    else:
+        from azure.identity import DefaultAzureCredential
+
+        token = DefaultAzureCredential().get_token(
+            "https://cognitiveservices.azure.com/.default"
+        )
+        headers["Authorization"] = f"Bearer {token.token}"
+
+    response = requests.patch(
+        f"{endpoint.rstrip('/')}/contentunderstanding/defaults",
+        params={"api-version": CU_API_VERSION},
+        headers=headers,
+        json={"modelDeployments": model_deployments()},
+        timeout=30,
+    )
+    response.raise_for_status()
+    return response.json()
 
 
 def get_cu_client():

@@ -51,16 +51,26 @@ If you're following these steps at your own pace:
 **Option A — Run the source notebook** (recommended for learning)
 
 1. Clone this repository
-2. Install Python dependencies:
+2. Install the locked Python and Jupyter environment:
    ```bash
-   pip install azure-ai-contentunderstanding --pre pymupdf python-dotenv openai agent-framework-azure-contentunderstanding agent-framework-foundry --pre
+   cd demo-app
+   uv sync --locked
    ```
 3. Create a `.env` file in the `src/` folder with your Azure Content Understanding endpoint and key:
    ```
    CONTENTUNDERSTANDING_ENDPOINT=https://<your-resource>.services.ai.azure.com/
    CONTENTUNDERSTANDING_KEY=<your-key>   # or omit to use DefaultAzureCredential
+   CONTENTUNDERSTANDING_COMPLETION_MODEL=gpt-5.2
+   CONTENTUNDERSTANDING_COMPLETION_DEPLOYMENT=<your-gpt-5.2-deployment-name>
+   CONTENTUNDERSTANDING_EMBEDDING_DEPLOYMENT=<your-text-embedding-3-large-deployment-name>
+   AGENT_MODEL=<your-agent-deployment-name>
    ```
-4. Open [`src/demo_fiber_cut_MAF.ipynb`](src/demo_fiber_cut_MAF.ipynb) and run cells sequentially
+   `CONTENTUNDERSTANDING_COMPLETION_MODEL` is the Content Understanding model family. The
+   `*_DEPLOYMENT` values are the actual deployment names in Foundry and may be different.
+   Content Understanding's analyzer API must list the selected model under `supportedModels`.
+4. Open [`src/medical_doc_understanding.ipynb`](src/medical_doc_understanding.ipynb) for the
+   healthcare workflow, or [`src/demo_fiber_cut_MAF.ipynb`](src/demo_fiber_cut_MAF.ipynb) for
+   the original demo. Select the `demo-app/.venv` kernel and run cells sequentially.
 
 **Option B — Run the interactive demo app** (the on-stage experience)
 

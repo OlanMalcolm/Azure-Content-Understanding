@@ -43,6 +43,10 @@ By default, all results are pre-processed (captured verbatim from the source not
    ```
    CONTENTUNDERSTANDING_ENDPOINT=https://your-endpoint.services.ai.azure.com/
    CONTENTUNDERSTANDING_KEY=your-api-key
+   CONTENTUNDERSTANDING_COMPLETION_MODEL=gpt-5.2
+   CONTENTUNDERSTANDING_COMPLETION_DEPLOYMENT=your-gpt-5.2-deployment-name
+   CONTENTUNDERSTANDING_EMBEDDING_DEPLOYMENT=your-text-embedding-3-large-deployment-name
+   AGENT_MODEL=your-agent-deployment-name
    ```
 2. Click the **"▶ Run Live"** button on any page
 
@@ -52,7 +56,12 @@ By default, all results are pre-processed (captured verbatim from the source not
 > .\.venv\Scripts\python.exe scripts\deploy_analyzers.py
 > ```
 >
+> The script configures the Content Understanding model defaults before creating analyzers.
 > Re-running is safe (every analyzer is created with `allow_replace=True`).
+>
+> `CONTENTUNDERSTANDING_COMPLETION_MODEL` is the supported Content Understanding model family;
+> `CONTENTUNDERSTANDING_COMPLETION_DEPLOYMENT` is the actual Foundry deployment name. Do not
+> put the deployment name in the analyzer `models` field.
 
 ## File Structure
 

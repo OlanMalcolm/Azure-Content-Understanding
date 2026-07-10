@@ -61,7 +61,7 @@ CUSTOM_ANALYZERS = {
     "photoLogTriageAnalyzer": {
         "description": "Triage field photo logs — priority findings + dispatch urgency.",
         "baseAnalyzerId": "prebuilt-document",
-        "models": {"completion": "gpt-5.2"},
+        "models": {"completion": "prebuilt-analyzer-completion"},
         "fieldSchema": {"fields": {
             "HighPriorityCount": {"type": "integer", "method": "generate",
                 "description": "Count of photos marked HIGH priority."},
@@ -74,7 +74,7 @@ CUSTOM_ANALYZERS = {
     "inspectionReportAnalyzer": {
         "description": "Extract critical segments and escalation needs from inspection report indices.",
         "baseAnalyzerId": "prebuilt-document",
-        "models": {"completion": "gpt-5.2"},
+        "models": {"completion": "prebuilt-analyzer-completion"},
         "fieldSchema": {"fields": {
             "CriticalSegments":   {"type": "string", "method": "generate",
                 "description": "Segments marked CRITICAL with timestamps and content."},
@@ -87,7 +87,7 @@ CUSTOM_ANALYZERS = {
     "fiberSpliceExtractor": {
         "description": "Extract strand-level OTDR loss data and failure modes from splice sheets.",
         "baseAnalyzerId": "prebuilt-document",
-        "models": {"completion": "gpt-5.2"},
+        "models": {"completion": "prebuilt-analyzer-completion"},
         "fieldSchema": {"fields": {
             "CableType":                 {"type": "string",  "method": "generate",
                 "description": "Cable type/standard (e.g. 'G.652D Single-Mode')."},
@@ -106,7 +106,7 @@ CUSTOM_ANALYZERS = {
     "fiberRoutingAnalyzer": {
         "description": "Identify redundancy gaps and single points of failure in fiber routes.",
         "baseAnalyzerId": "prebuilt-document",
-        "models": {"completion": "gpt-5.2"},
+        "models": {"completion": "prebuilt-analyzer-completion"},
         "fieldSchema": {"fields": {
             "RedundancyGap":        {"type": "string",  "method": "generate",
                 "description": "Where primary + backup share infrastructure."},
@@ -121,7 +121,7 @@ CUSTOM_ANALYZERS = {
     "equipmentProcurementAnalyzer": {
         "description": "Extract procurement-critical data — costs, lead times, budget verdict.",
         "baseAnalyzerId": "prebuilt-document",
-        "models": {"completion": "gpt-5.2"},
+        "models": {"completion": "prebuilt-analyzer-completion"},
         "fieldSchema": {"fields": {
             "TotalCost":        {"type": "number",  "method": "generate",
                 "description": "Sum of line item totals (no currency symbol)."},
@@ -136,7 +136,7 @@ CUSTOM_ANALYZERS = {
     "plantDiagramAnalyzer": {
         "description": "Identify affected zones, thermal risks, and fiber connectivity in plant diagrams.",
         "baseAnalyzerId": "prebuilt-document",
-        "models": {"completion": "gpt-5.2"},
+        "models": {"completion": "prebuilt-analyzer-completion"},
         "fieldSchema": {"fields": {
             "FiberEntryPoint": {"type": "string", "method": "generate",
                 "description": "Where external fiber enters (ODF, MDF, demarc)."},
@@ -224,7 +224,7 @@ classifier = ContentAnalyzer(
         enable_segment=False,
         content_categories=categories,
     ),
-    models={"completion": "gpt-5.2"},
+    models={"completion": "prebuilt-analyzer-completion"},
 )
 client.begin_create_analyzer(
     analyzer_id=CLASSIFIER_ID, resource=classifier, allow_replace=True
