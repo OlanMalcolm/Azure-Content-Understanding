@@ -1,10 +1,12 @@
 """One-shot deploy of the six custom analyzers + classifier used by Act 3.
 
 Mirrors notebook cells 21, 22, and 24 of `src/demo_fiber_cut_MAF.ipynb`.
-Run this once after pointing `.env` at a new Content Understanding endpoint:
+Run this once after pointing `.env` at a new Content Understanding endpoint. The completion
+model family and deployment name are configured with `CONTENTUNDERSTANDING_COMPLETION_MODEL`
+and `CONTENTUNDERSTANDING_COMPLETION_DEPLOYMENT`.
 
     cd demo-app
-    .\.venv\Scripts\python.exe scripts\deploy_analyzers.py
+    .\\.venv\\Scripts\\python.exe scripts\\deploy_analyzers.py
 
 Re-running is safe — every deploy uses `allow_replace=True`.
 """
@@ -17,14 +19,20 @@ REPO_DEMO_APP = Path(__file__).resolve().parent.parent
 if str(REPO_DEMO_APP) not in sys.path:
     sys.path.insert(0, str(REPO_DEMO_APP))
 
-from services.cu_client import CLASSIFIER_ID, get_cu_client, is_configured  # noqa: E402
+from services.cu_client import (  # noqa: E402
+    CLASSIFIER_ID,
+    CU_COMPLETION_ALIAS,
+    configure_model_defaults,
+    get_cu_client,
+    is_configured,
+)
 
 
 CUSTOM_ANALYZERS: dict[str, dict] = {
     "photoLogTriageAnalyzer": {
         "description": "Triage field photo logs — extract priority findings and recommend dispatch urgency for the repair agent.",
         "baseAnalyzerId": "prebuilt-document",
-        "models": {"completion": "gpt-5.2"},
+        "models": {"completion": CU_COMPLETION_ALIAS},
         "fields": {
             "HighPriorityCount": ("integer", "Count of photos/entries marked HIGH priority."),
             "CriticalFindings":  ("string",  "Summarize all HIGH-priority findings in one paragraph. Include location (GPS if available), subject, and why it's critical."),
@@ -34,7 +42,7 @@ CUSTOM_ANALYZERS: dict[str, dict] = {
     "inspectionReportAnalyzer": {
         "description": "Extract critical segments and escalation needs from video inspection indices for the repair agent.",
         "baseAnalyzerId": "prebuilt-document",
-        "models": {"completion": "gpt-5.2"},
+        "models": {"completion": CU_COMPLETION_ALIAS},
         "fields": {
             "CriticalSegments":   ("string", "List video segments marked CRITICAL or 'Concern' with their timestamps and content. Format: 'VID-05 (52:30-78:00): Vault TV-3 CRITICAL damage; VID-06 (78:00-95:00): pavement heave'."),
             "EscalationRequired": ("string", "YES or NO — is escalation to engineering required based on the video findings? Explain in one sentence."),
@@ -44,7 +52,7 @@ CUSTOM_ANALYZERS: dict[str, dict] = {
     "fiberSpliceExtractor": {
         "description": "Extract critical fiber splice data for the repair response agent.",
         "baseAnalyzerId": "prebuilt-document",
-        "models": {"completion": "gpt-5.2"},
+        "models": {"completion": CU_COMPLETION_ALIAS},
         "fields": {
             "CableType":                 ("string",  "The fiber cable type/standard (e.g., 'G.652D Single-Mode', '12-strand SM OS2')."),
             "StrandCount":               ("integer", "Total number of fiber strands tested (exclude header row)."),
@@ -57,7 +65,7 @@ CUSTOM_ANALYZERS: dict[str, dict] = {
     "fiberRoutingAnalyzer": {
         "description": "Analyze fiber routing diagrams to identify redundancy gaps and single points of failure for the repair agent.",
         "baseAnalyzerId": "prebuilt-document",
-        "models": {"completion": "gpt-5.2"},
+        "models": {"completion": CU_COMPLETION_ALIAS},
         "fields": {
             "RedundancyGap":        ("string",  "Identify where primary and backup routes share infrastructure (conduit, vault, pole). Format: 'Route 2 shares conduit with Route 1 in Sections 3-5'. If none found, say 'No gap identified'."),
             "AffectedCustomers":    ("integer", "Number of customers at risk if the identified single point of failure is hit. Look for customer counts in route tables."),
@@ -68,7 +76,7 @@ CUSTOM_ANALYZERS: dict[str, dict] = {
     "equipmentProcurementAnalyzer": {
         "description": "Extract procurement-critical data from equipment specs and materials orders for budget/scheduling decisions.",
         "baseAnalyzerId": "prebuilt-document",
-        "models": {"completion": "gpt-5.2"},
+        "models": {"completion": CU_COMPLETION_ALIAS},
         "fields": {
             "TotalCost":         ("number",  "Total cost of all materials in the order (sum of line item totals). Return as a number without currency symbol."),
             "BackorderRisk":     ("string",  "List any items that are backordered, out of stock, or have lead times >5 days. Format: 'Item (P/N): lead time or status'. If none, say 'All items available'."),
@@ -79,7 +87,7 @@ CUSTOM_ANALYZERS: dict[str, dict] = {
     "plantDiagramAnalyzer": {
         "description": "Analyze data center plant diagrams to identify affected zones, thermal risks, and fiber connectivity for repair planning.",
         "baseAnalyzerId": "prebuilt-document",
-        "models": {"completion": "gpt-5.2"},
+        "models": {"completion": CU_COMPLETION_ALIAS},
         "fields": {
             "FiberEntryPoint": ("string", "Where external fiber enters the facility. Look for ODF, MDF, fiber tray, or demarc labels."),
             "ThermalRisk":     ("string", "Any thermal or cooling concerns mentioned (hot spots, CRAC issues, blocked airflow). If none, say 'No thermal issues noted'."),
@@ -115,6 +123,12 @@ def deploy_all(client, *, log=print) -> None:
         ContentFieldSchema,
         ContentFieldType,
         GenerationMethod,
+    )
+
+    defaults = configure_model_defaults()
+    log(
+        "Configured Content Understanding defaults: "
+        f"{defaults.get('modelDeployments', {})}"
     )
 
     type_map = {
@@ -161,7 +175,7 @@ def deploy_all(client, *, log=print) -> None:
             enable_segment=False,
             content_categories=categories,
         ),
-        models={"completion": "gpt-5.2"},
+        models={"completion": CU_COMPLETION_ALIAS},
     )
     poller = client.begin_create_analyzer(
         analyzer_id=CLASSIFIER_ID, resource=classifier, allow_replace=True
@@ -208,6 +222,12 @@ def ensure_deployed(client, *, log=print) -> bool:
             isinstance(exc, HttpResponseError)
             and getattr(exc, "status_code", None) == 404
         )
+
+    defaults = configure_model_defaults()
+    log(
+        "Configured Content Understanding defaults: "
+        f"{defaults.get('modelDeployments', {})}"
+    )
 
     needs_redeploy = False
     reason = ""

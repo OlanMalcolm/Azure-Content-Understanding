@@ -18,6 +18,9 @@ Thumbs.db
 .env.local
 .env.*.local
 
+# Locally downloaded or generated clinical demo documents
+src/sample-data/cnh-clinical/
+
 # Dependencies (if applicable)
 node_modules/
 __pycache__/
