@@ -20,7 +20,7 @@ Building high-quality agentic applications requires well-structured data — but
 
 | Folder | Purpose |
 |---|---|
-| [`src/`](src/) | The **source notebook** — `demo_fiber_cut_MAF.ipynb` walks through all five acts end-to-end. Best place to start. |
+| [`src/`](src/) | The **source notebook** — `demo_fiber_cut_MAF.ipynb` walks through all five acts end-to-end. Best place to start. The **medical notebook** - `medical_doc_understanding.ipynb` walks through how the source notebook has been modified for clincial work.|
 | [`demo-app/`](demo-app/) | A **Dash presentation app** that combines the HTML slide deck with interactive "live code" pages for each act. This is what's used on stage. |
 | [`src/sample-data/documents/`](src/sample-data/documents/) | The 9 field documents (PDFs) used throughout the demo. |
 
